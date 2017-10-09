@@ -285,44 +285,25 @@ class ObjectCatalog:
                     )
             hdu = 'LDAC_OBJECTS'
             for i,row in enumerate(data):
-                #print i
                 outrow = {}
                 for item,value in self.constDict.iteritems():
                     outrow[item] = value[0]
-                #outrow = copy.deepcopy(self.constDict)
                 for idx in range(0,len(orderedFitsColumns)):
                     # if this column is an array of values
                     name = orderedFitsColumns[idx].upper()
                     if datatypes[orderedFitsColumns[idx].upper()].subdtype:
-                        #arrvals = []
                         for pos in attrsToCollect[orderedFitsColumns[idx]][self.POSITION]:
-                            #name = orderedFitsColumns[idx].upper()
-                            #for hdu in self.dbDict.keys():
-                            #    if name in self.dbDict[hdu].keys():
-                            #        print hdu
                             outrow[self.dbDict[hdu][name][0][int(pos)]] = str(row[idx][int(pos)])
-                            #break
-                            #raise Exception('Error locating column')
-                            #print self.dbDict['LDAC_OBJECTS'].keys()
-                            #print self.dbDict[orderedFitsColumns[idx].upper()][0]
-                            #outrow[orderedFitsColumns[idx].upper() + "_" + str(int(pos) + 1)] = str(row[idx][int(pos)])
                     # else it is a scalar
                     else:
-                        #for hdu in self.dbDict.keys():
-                        #    if name in self.dbDict[hdu].keys():
-                        #print hdu
                         outrow[self.dbDict[hdu][name][0][0]] = str(row[idx])
-                        #break
 
-                        #outrow[orderedFitsColumns[idx].upper()] = str(row[idx])
                 # else if we are writing to a file
                 outdata.append(outrow)
             # end for row in data
         # end while endrow < lastrow
         if len(outdata) > 0:
             self.insert_many(self.tempschema + '.' + self.temptable, columns, outdata)
-	    #self.execute('COMMIT WRITE BATCH NOWAIT')
-            #self.dbh.commit()
 
     def insert_many(self, table, columns, rows):
         if len (rows) == 0:
@@ -341,7 +322,8 @@ class ObjectCatalog:
         curs = self.dbh.cursor ()
         try:
             curs.executemany (stmt, rows)
-            curs.execute('COMMIT WRITE BATCH NOWAIT')
+            #curs.execute('COMMIT WRITE BATCH NOWAIT')
+            curs.execute('commit')
         finally:
             curs.close ()
 

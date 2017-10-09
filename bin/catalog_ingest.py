@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     if request==None or filename==None or filetype==None or targettable==None:
         exit(1)
-    printinfo(runtime.report("INIT"))    
+    printinfo(runtime.report("INITIALIZE"))
     objectcat = ObjectCatalog(
                         request=request,
                         filetype=filetype,
