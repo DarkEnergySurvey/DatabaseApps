@@ -19,7 +19,6 @@ from despydb import desdbi
 from despyserviceaccess import serviceaccess
 from databaseapps.ingestutils import IngestUtils as ingestutils
 import argparse
-import random
 
 class Timing(object):
     def __init__(self, name):
@@ -65,9 +64,9 @@ class ObjectCatalog:
 
     def __init__(self, request, filetype, datafile, temptable, targettable,
                     fitsheader, dumponly, services, section):
-        
+
         self.debug("start CatalogIngest.init()")
-        self.dbh = desdbi.DesDbi(services,section)
+        self.dbh = desdbi.DesDbi(services, section, retry=True)
 
         self.debug("opening fits file")
         self.fits = fitsio.FITS(datafile)
@@ -97,14 +96,14 @@ class ObjectCatalog:
         else:
             self.debug("start resolveDbObject() for temp: %s" % temptable)
             (self.tempschema,self.temptable) = ingestutils.resolveDbObject(temptable,self.dbh)
-        self.debug("target schema,table = %s, %s; temp= %s, %s" % 
+        self.debug("target schema,table = %s, %s; temp= %s, %s" %
                 (self.targetschema,self.targettable,self.tempschema,self.temptable))
 
         if self.dump:
             self.constDict = {}
         else:
             self.constDict = {
-                "FILENAME":[self.shortfilename + str(random.randint(1,10000)),True], 
+                "FILENAME":[self.shortfilename,True],
                 "REQNUM":[request,False]
                 }
             self.constlist.append("FILENAME")
@@ -129,14 +128,14 @@ class ObjectCatalog:
     def getObjectColumns(self):
         results = OrderedDict()
         sqlstr = '''
-            select hdu, UPPER(attribute_name), NVL(position,0), 
+            select hdu, UPPER(attribute_name), NVL(position,0),
                 column_name, NVL(derived,'h'),
                 case when datafile_datatype='int' THEN 'integer external'
                     when datafile_datatype='float' THEN 'float external'
                     when datafile_datatype='double' THEN 'decimal external'
                     when datafile_datatype='char' THEN 'char'
                 end sqlldr_type
-            from ops_datafile_metadata 
+            from ops_datafile_metadata
             where filetype = :ftype
             order by 1,2,3 '''
         cursor = self.dbh.cursor()
@@ -198,7 +197,7 @@ class ObjectCatalog:
         value = None
         quoteit = None
         hdr = self.fits[hduName].read_header()
-        
+
         for attribute, dblist in self.dbDict[hduName].iteritems():
             for col in dblist[self.COLUMN_NAME]:
                 if dblist[self.DERIVED] == 'c':
@@ -331,7 +330,7 @@ class ObjectCatalog:
     def numAlreadyIngested(self):
         results = OrderedDict()
         sqlstr = '''
-            select count(*), reqnum 
+            select count(*), reqnum
             from %s
             where filename=:fname
             group by reqnum
@@ -344,7 +343,7 @@ class ObjectCatalog:
                 schtbl = self.targetschema + '.' + self.targettable
                 cursor.execute(sqlstr % schtbl,{"fname":self.shortfilename})
                 records = cursor.fetchall()
-        
+
                 if(len(records) > 0):
                     return records[0]
                 else:
@@ -360,7 +359,7 @@ class ObjectCatalog:
 
     def createIngestTable(self):
         tablespace = "DESSE_REQNUM%07d_T" % int(self.request)
-        
+
         cursor = self.dbh.cursor()
         self.info("Creating tablespace %s and table %s.%s if they do not already exist"
                  % (tablespace,self.tempschema,self.temptable))
@@ -392,8 +391,8 @@ class ObjectCatalog:
                     exitcode = 0
                 else:
                     errstr = ("ERROR: file " + self.fullfilename + " already ingested, but " +
-                        "the number of objects is DIFFERENT: catalog=" + 
-                        str(numCatObjects) + "; DB=" + str(numDbObjects) + 
+                        "the number of objects is DIFFERENT: catalog=" +
+                        str(numCatObjects) + "; DB=" + str(numDbObjects) +
                         ", Original reqnum=" + str(dbReqnum))
                     raise Exception(errstr)
                     exitcode = 1
