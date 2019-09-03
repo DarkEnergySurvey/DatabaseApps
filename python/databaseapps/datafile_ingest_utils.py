@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# $Id$
-# $Rev::                                  $:  # Revision of last commit.
-# $LastChangedBy::                        $:  # Author of last commit.
-# $LastChangedDate::                      $:  # Date of last commit.
+# $Id: datafile_ingest_utils.py 40946 2015-12-02 16:16:07Z mgower $
+# $Rev:: 40946                            $:  # Revision of last commit.
+# $LastChangedBy:: mgower                 $:  # Author of last commit.
+# $LastChangedDate:: 2015-12-02 10:16:07 #$:  # Date of last commit.
 
 """  Functions used to ingest non-metadata from a file into a database table based upon filetype """
 
