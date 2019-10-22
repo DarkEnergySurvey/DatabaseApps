@@ -16,10 +16,10 @@
 
     Error Classes:
 
-    Developed at: 
+    Developed at:
     The National Center for Supercomputing Applications (NCSA).
-  
-    Copyright (C) 2012 Board of Trustees of the University of Illinois. 
+
+    Copyright (C) 2012 Board of Trustees of the University of Illinois.
     All rights reserved.
 
 """
