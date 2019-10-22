@@ -54,58 +54,6 @@ class IngestUtils(object):
     # end isInteger
 
     @staticmethod
-    def func_getnite(dateobs):
-        """ Get the night of observation from the input date
-
-            Parameters
-            ----------
-            dateobs : str
-                A string representation of the date
-
-            Returns
-            -------
-            str
-                The nite
-        """
-        v = dateobs.split(':')
-        hh = int(v[0].split('-')[2][-2:])
-        if hh > 14:
-            nite = v[0][:-3].replace('-', '')
-        else:
-            y = int(v[0][0:4])
-            m = int(v[0][5:7])
-            d = int(v[0][8:10])-1
-            if d == 0:
-                m = m - 1
-                if m == 0:
-                    m = 12
-                    y = y - 1
-                d = calendar.monthrange(y, m)[1]
-            nite = str(y).zfill(4) + str(m).zfill(2) + str(d).zfill(2)
-        return nite
-    # end func_getnite
-
-    @staticmethod
-    def func_getband(flter):
-        """ Determine the band from the filter input
-
-            Parameters
-            ----------
-            fltr : str
-                The filter
-
-            Returns
-            -------
-            str
-                The band.
-        """
-        band = flter[0]
-        if band not in ['u', 'g', 'r', 'i', 'z', 'Y']:
-            raise KeyError("filter yields an invalid band")
-        return band
-    # end func_getband
-
-    @staticmethod
     def resolveDbObject(objectname, dbh):
         """ Given an object name and an open DB handle, this routine returns
             the schema that owns the object and the object name
