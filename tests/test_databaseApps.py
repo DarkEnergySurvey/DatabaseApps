@@ -5,11 +5,25 @@ import unittest
 import os
 import stat
 from MockDBI import MockConnection
+import sys
+
+from contextlib import contextmanager
+from StringIO import StringIO
 
 import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
+from despydb import desdbi
 
-'''
+@contextmanager
+def capture_output():
+    new_out, new_err = StringIO(), StringIO()
+    old_out, old_err = sys.stdout, sys.stderr
+    try:
+        sys.stdout, sys.stderr = new_out, new_err
+        yield sys.stdout, sys.stderr
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err
+
 class TestIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -50,8 +64,52 @@ port    =   0
         MockConnection.destroy()
 
     def test_init(self):
-        ing = Ingest()
-'''
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        self.assertEqual(ing.getstatus(), 0)
+
+    def test_debug_and_info(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        msg = "test message"
+        ing._debug = False
+        with capture_output() as (out, err):
+            ing.debug(msg)
+            output = out.getvalue().strip()
+            self.assertEqual(output, "")
+
+        ing._debug = True
+        with capture_output() as (out, err):
+            ing.debug(msg)
+            output = out.getvalue().strip()
+            self.assertTrue(msg in output)
+
+        msg = "info message"
+        with capture_output() as (out, err):
+            ing.info(msg)
+            output = out.getvalue().strip()
+            self.assertTrue(msg in output)
+
+        msg = "info message"
+        with capture_output() as (out, err):
+            ing.printinfo(msg)
+            output = out.getvalue().strip()
+            self.assertTrue(msg in output)
+
+    def test_getObjectColumns(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        cols = ing.getObjectColumns()
+        self.assertTrue('WCL' in cols.keys())
+        self.assertTrue('FILENAME' in cols['WCL'].keys())
+
+    def test_blanks(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        self.assertIsNone(ing.getNumObjects())
+        self.assertIsNone(ing.generateRows())
+        self.assertEqual(ing.numAlreadyIngested(), 0)
+        self.assertFalse(ing.isLoaded())
 
 class TestIngestUtils(unittest.TestCase):
     def test_getShortFilename(self):
