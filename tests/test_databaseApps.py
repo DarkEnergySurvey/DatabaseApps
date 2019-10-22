@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# pylint: skip-file
 
 import unittest
 import os
@@ -54,8 +55,15 @@ port    =   0
 
 class TestIngestUtils(unittest.TestCase):
     def test_getShortFilename(self):
-        pass
+        fname = 'test.fits'
+        path = '/the/path/to/thefile/' + fname
+        self.assertEqual(fname, ingutil.IngestUtils.getShortFilename(path))
+        self.assertEqual(fname, ingutil.IngestUtils.getShortFilename(fname))
 
+    def test_isInteger(self):
+        self.assertTrue(ingutil.IngestUtils.isInteger(5))
+        self.assertTrue(ingutil.IngestUtils.isInteger(5.8))
+        self.assertFalse(ingutil.IngestUtils.isInteger('fna'))
 
 if __name__ == '__main__':
     unittest.main()
