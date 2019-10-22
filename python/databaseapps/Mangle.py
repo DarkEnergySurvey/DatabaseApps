@@ -1,6 +1,9 @@
-from Ingest import Ingest
+"""
+    Mangle Ingestion
+"""
 import sys
 import traceback
+from databaseapps.Ingest import Ingest
 from despymisc import miscutils
 
 class Mangle(Ingest):
@@ -40,7 +43,7 @@ class Mangle(Ingest):
                     if self.coadd_id is not None and i == self.coadd_id:
                         try:
                             tdata[i] = self.idDict[types[i](d)]
-                        except KeyError, ke:
+                        except KeyError:
                             se = sys.exc_info()
                             e = se[0]
                             if self.skipmissing:

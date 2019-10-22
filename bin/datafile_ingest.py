@@ -35,7 +35,7 @@ def main():
         [tablename, didatadefs] = dbh.get_datafile_metadata(filetype)
 
         numrows = dfiutils.datafile_ingest_main(dbh, filetype, fullname, tablename, didatadefs)
-        if numrows == None or numrows == 0:
+        if numrows is None or numrows == 0:
             print "datafile_ingest.py: warning - 0 rows ingested from " + fullname
         else:
             dbh.commit()

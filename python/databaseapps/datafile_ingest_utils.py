@@ -114,7 +114,7 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
                     if attr is not None or coldata[DI_DATATYPE] == 'rnum':
                         if isinstance(attr, numpy.ndarray):
                             attr = attr.reshape(-1).tolist()
-                        if type(attr) is list:
+                        if isinstance(attr, list):
                             if indx < len(attr):
                                 row[colname] = attr[indx]
                             else:
@@ -133,10 +133,10 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
                                 row[colname] = None
                     else:
                         row[colname] = None
-            if len(row) > 0:
+            if row:
                 row["filename"] = sourcefile
                 data.append(row)
-    if len(data) > 0:
+    if data:
         dbh.insert_many_indiv(tablename, columnlist, data)
     return len(data)
 # end ingest_datafile_contents
@@ -177,7 +177,7 @@ def is_ingested(filename, tablename, dbh):
     found = False
     curs = dbh.cursor()
     curs.execute(sqlstr, {"fname":filename})
-    for row in curs:
+    for _ in curs:
         found = True
     curs.close()
     return found

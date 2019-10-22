@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # $Id$
 # $Rev::                                  $:  # Revision of last commit.
@@ -104,7 +104,7 @@ class CoaddCatalog:
     def getObjectColumns(self):
         results = OrderedDict()
         sqlstr = '''
-            select dm.hdu, NVL(UPPER(dm.attribute_name),atc.column_name), NVL(dm.position,0), 
+            select dm.hdu, NVL(UPPER(dm.attribute_name),atc.column_name), NVL(dm.position,0),
                 atc.column_name, NVL(dm.derived,'h'),
                 case when data_type='NUMBER' and data_scale=0 THEN 'integer external'
                     when data_type='BINARY_FLOAT' THEN 'float external'
@@ -580,7 +580,7 @@ class CoaddCatalog:
         cursor = self.dbh.cursor()
         cursor.execute(sqlstr % self.targettable,{"fname":self.shortfilename})
         count = cursor.fetchone()[0]
-        
+
         return count
 
 
@@ -601,7 +601,7 @@ class CoaddCatalog:
         if numDbObjects > 0:
             loaded = True
             if numDbObjects == numCatObjects:
-                self.info("WARNING: file " + self.fullfilename + 
+                self.info("WARNING: file " + self.fullfilename +
                           " already ingested with the same number of" +
                           " objects. Aborting new ingest.")
                 exitcode = 0

@@ -1,4 +1,6 @@
-from FitsIngest import FitsIngest
+""" Module for ingesting coadd catalogs
+"""
+from databaseapps.FitsIngest import FitsIngest
 from despydb import desdbi
 
 class CoaddCatalog(FitsIngest):
@@ -20,6 +22,8 @@ class CoaddCatalog(FitsIngest):
         self.setCatalogInfo(ingesttype)
 
     def getIDs(self):
+        """ doc
+        """
         # retrieve all coadd objects ids needed for this band's ingest as
         # one list
         self.info("Grabbing block of coadd object ids from DB sequence")
@@ -37,22 +41,22 @@ class CoaddCatalog(FitsIngest):
             where filename=:fname
             '''
         cursor = self.dbh.cursor()
-        cursor.execute(sqlstr % self.catalogtable,{"fname":self.shortfilename})
+        cursor.execute(sqlstr % self.catalogtable, {"fname" :self.shortfilename})
         records = cursor.fetchall()
 
-        if(len(records) > 0):
+        if records:
             (self.band, self.tilename, self.pfw_attempt_id) = records[0]
 
             # band won't be set for detection image, so set it to 'det'
             if ingesttype == 'det':
                 self.band = 'det'
-            elif self.band == None:
+            elif self.band is None:
                 exit("Can't find band for file " + self.shortfilename + " in catalog table")
 
-            if self.tilename == None:
+            if self.tilename is None:
                 exit("Can't find tilename for file " + self.shortfilename + " in catalog table")
 
-            if self.pfw_attempt_id == None:
+            if self.pfw_attempt_id is None:
                 exit("Can't find pfw_attempt_id for file " + self.shortfilename + " in catalog table")
         else:
             exit("File " + self.shortfilename + " missing from catalog table")
@@ -94,4 +98,3 @@ class CoaddCatalog(FitsIngest):
         for r in records:
             if not self.idDict.has_key(r[0]):
                 self.idDict[r[0]] = r[1]
-

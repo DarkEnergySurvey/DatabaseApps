@@ -1,10 +1,17 @@
-import fitsio
+"""
+    Module for ingesting fits data
+"""
 import sys
 import traceback
-from Ingest import Ingest, Entry
+
+import fitsio
+from databaseapps.Ingest import Ingest, Entry
 from despymisc import miscutils
 
 class FitsIngest(Ingest):
+    """
+        Class for ingesting fits data files
+    """
     # maximum number of rows to grap from a fits table at a time
     fits_chunk = 10000
 
@@ -21,6 +28,7 @@ class FitsIngest(Ingest):
 
         self.generateID = generateID
         self.matchCount = matchCount
+        self.coadd_ids = None
 
     def __del__(self):
         if hasattr(self, 'fits'):
@@ -37,6 +45,7 @@ class FitsIngest(Ingest):
         """ Convert the input fits data into a list of lists
 
         """
+        #pylint: disable=lost-exception
         retval = 0
         lastrow = self.fits[self.objhdu].get_nrows()
 
@@ -66,11 +75,9 @@ class FitsIngest(Ingest):
                 startrow = endrow
                 endrow = min(startrow+self.fits_chunk, lastrow)
 
-                data = fitsio.read(
-                        self.fullfilename,
-                        rows=range(startrow,endrow),
-                        columns=self.orderedColumns,ext=self.objhdu
-                        )
+                data = fitsio.read(self.fullfilename,
+                                   rows=range(startrow, endrow),
+                                   columns=self.orderedColumns, ext=self.objhdu)
 
                 for row in data:
                     linecount += 1
@@ -82,9 +89,7 @@ class FitsIngest(Ingest):
                     # array to hold values for this FITS row
                     outrow = []
 
-                    coadd_object_id = None
-
-                    for idx in range(0,len(self.orderedColumns)):
+                    for idx in range(0, len(self.orderedColumns)):
                         # if the COADD_OBJECT_ID dictionary is being created
                         if self.generateID and self.orderedColumns[idx] == "NUMBER":
                             if self.idDict.has_key(row[idx]):
@@ -141,4 +146,3 @@ class FitsIngest(Ingest):
                 miscutils.fwdebug_print("Incorrect number of rows in %s. Count is %i, should be %i" % (self.shortfilename, len(self.sqldata), len(self.idDict.keys())))
 
             return retval
-
