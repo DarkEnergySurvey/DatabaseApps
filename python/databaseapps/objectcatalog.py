@@ -23,12 +23,12 @@ import argparse
 class Timing(object):
     def __init__(self, name):
         self.start = time.time()
-	self.current = time.time()
+        self.current = time.time()
         self.name = name
     def report(self,text):
-	txt = "TIMING: %s finished in %.2f seconds" % (text, time.time()-self.current)
-	self.current = time.time()
-	return txt
+        txt = "TIMING: %s finished in %.2f seconds" % (text, time.time()-self.current)
+        self.current = time.time()
+        return txt
 
     def end(self):
         return "TIMING: %s finished in %.2f seconds" % (self.name, time.time()-self.start)
