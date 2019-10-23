@@ -192,7 +192,7 @@ def get_fits_data(fullname, whichhdu):
     try:
         hdu = int(whichhdu)
     except ValueError:
-        hdu = whichhdu
+        hdu = str(whichhdu)
 
     hdulist = pyfits.open(fullname)
     hdr = hdulist[hdu].header
