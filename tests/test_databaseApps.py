@@ -6,6 +6,7 @@ import os
 import stat
 from MockDBI import MockConnection
 import sys
+import copy
 
 from contextlib import contextmanager
 from StringIO import StringIO
@@ -13,6 +14,8 @@ from StringIO import StringIO
 import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
 from despydb import desdbi
+
+import catalog_ingest as cati
 
 @contextmanager
 def capture_output():
@@ -23,6 +26,82 @@ def capture_output():
         yield sys.stdout, sys.stderr
     finally:
         sys.stdout, sys.stderr = old_out, old_err
+
+class TestCatalogIngest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print 'SETUP'
+        cls.sfile = 'services.ini'
+        open(cls.sfile, 'w').write("""
+
+[db-maximal]
+PASSWD  =   maximal_passwd
+name    =   maximal_name_1    ; if repeated last name wins
+user    =   maximal_name      ; if repeated key, last one wins
+Sid     =   maximal_sid       ;comment glued onto value not allowed
+type    =   POSTgres
+server  =   maximal_server
+
+[db-minimal]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   oracle
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_ingest(self):
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+        temp = copy.deepcopy(sys.argv)
+        sys.argv = ['catalog_ingest.py',
+                    '-request',
+                    '3463',
+                    '-filename',
+                    '/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits',
+                    '-filetype',
+                    'cat_firstcut',
+                    '-targettable',
+                    'MAIN.SE_OBJECT']
+        output = ''
+        with capture_output() as (out, err):
+            cati.main()
+            output = out.getvalue().strip()
+        count = 0
+        table = None
+        output = output.split('\n')
+        for line in output:
+            if 'LOAD' in line and 'finished' in line:
+                line = line[line.find('LOAD'):]
+                temp = line.split()
+                count = int(temp[1])
+            elif 'Creating tablespace' in line:
+                line = line[line.find('MAIN.'):]
+                temp = line.split()[0]
+                table = temp.split('.')[1]
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        curs = dbh.cursor()
+        curs.execute('select count(*) from ' + table)
+        res = curs.fetchall()[0][0]
+        self.assertEqual(res, count)
+
+        sys.argv = temp
 
 class TestIngest(unittest.TestCase):
     @classmethod
