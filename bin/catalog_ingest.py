@@ -31,8 +31,7 @@ def printinfo(msg):
     """doc """
     print time.strftime(ObjectCatalog.debugDateFormat) + " - " + msg
 
-if __name__ == '__main__':
-
+def main():
     hduList = None
     runtime = Timing('Full ingestion')
     parser = argparse.ArgumentParser(description='Ingest objects from a fits catalog')
@@ -79,3 +78,6 @@ if __name__ == '__main__':
     printinfo(runtime.report("LOAD %s" % str(objectcat.getNumObjects())))
     printinfo("catalogIngest load of " + str(objectcat.getNumObjects()) + " objects from " + filename + " completed")
     printinfo(runtime.end())
+
+if __name__ == '__main__':
+    main()
