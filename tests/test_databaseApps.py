@@ -16,6 +16,7 @@ import databaseapps.ingestutils as ingutil
 from despydb import desdbi
 
 import catalog_ingest as cati
+import datafile_ingest as dfi
 
 @contextmanager
 def capture_output():
@@ -81,7 +82,7 @@ port    =   0
                     'MAIN.SE_OBJECT']
         output = ''
         with capture_output() as (out, err):
-            cati.main()
+            self.assertEqual(cati.main(), 0)
             output = out.getvalue().strip()
         count = 0
         table = None
@@ -101,7 +102,81 @@ port    =   0
         res = curs.fetchall()[0][0]
         self.assertEqual(res, count)
 
+        sys.argv = ['catalog_ingest.py',
+                    '-request',
+                    '3463']
+        self.assertEqual(cati.main(), 1)
         sys.argv = temp
+
+    #def test_fail_states(self):
+
+class TestDatafileIngest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print 'SETUP'
+        cls.sfile = 'services.ini'
+        open(cls.sfile, 'w').write("""
+
+[db-maximal]
+PASSWD  =   maximal_passwd
+name    =   maximal_name_1    ; if repeated last name wins
+user    =   maximal_name      ; if repeated key, last one wins
+Sid     =   maximal_sid       ;comment glued onto value not allowed
+type    =   POSTgres
+server  =   maximal_server
+
+[db-minimal]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   oracle
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_ingest(self):
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+        temp = copy.deepcopy(sys.argv)
+        sys.argv = ['datafile_ingest.py',
+                    '--filename',
+                    '/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_hpix.fits',
+                    '--filetype',
+                    'red_hpix']
+        output = ''
+        with capture_output() as (out, err):
+            dfi.main()
+            output = out.getvalue().strip()
+        count = 0
+        table = 'SE_OBJECT_HPIX'
+        output = output.split('\n')
+        for line in output:
+            if 'ingest of' in line:
+                temp = line.split(',')[1]
+                count = int(temp.split()[0])
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        curs = dbh.cursor()
+        curs.execute('select count(*) from ' + table)
+        res = curs.fetchall()[0][0]
+        self.assertEqual(res, count)
+
+        sys.argv = temp
+
 
 class TestIngest(unittest.TestCase):
     @classmethod
