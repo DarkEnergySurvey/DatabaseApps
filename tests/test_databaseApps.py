@@ -17,7 +17,7 @@ from despydb import desdbi
 
 import catalog_ingest as cati
 import datafile_ingest as dfi
-
+import mepoch_ingest as mei
 @contextmanager
 def capture_output():
     new_out, new_err = StringIO(), StringIO()
@@ -174,6 +174,99 @@ port    =   0
         curs.execute('select count(*) from ' + table)
         res = curs.fetchall()[0][0]
         self.assertEqual(res, count)
+
+        sys.argv = temp
+
+class TestMepochIngest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print 'SETUP'
+        cls.sfile = 'services.ini'
+        open(cls.sfile, 'w').write("""
+
+[db-maximal]
+PASSWD  =   maximal_passwd
+name    =   maximal_name_1    ; if repeated last name wins
+user    =   maximal_name      ; if repeated key, last one wins
+Sid     =   maximal_sid       ;comment glued onto value not allowed
+type    =   POSTgres
+server  =   maximal_server
+
+[db-minimal]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   oracle
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_ingest(self):
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+        temp = copy.deepcopy(sys.argv)
+        for i in ['cat', 'list', 'wavg', 'mangle']:
+            try:
+                os.symlink('/var/lib/jenkins/test_data/' + i, i)
+            except:
+                pass
+        sys.argv = ['mepoch_ingest.py',
+                    '--detcat',
+                    'cat/DES0445-4957_r4969p01_det_cat.fits',
+                    '--bandcat_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-coadd-cat.list',
+                    '--wavg_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-wavg-band.list',
+                    '--wavg_oclink_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-wavg-oclink.list',
+                    '--ccdgon_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-ccdgon.list',
+                    '--molygon_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-molygon.list',
+                    '--molygon_ccdgon_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-molyccd.list',
+                    '--coadd_object_molygon_list',
+                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-cobjmoly.list']
+        output = ''
+        with capture_output() as (out, err):
+            self.assertEqual(mei.main(), 0)
+            output = out.getvalue().strip()
+
+        lookups = []
+        table = None
+        filename = None
+        count = 0
+        output = output.split('\n')
+        for line in output:
+            if 'Working on' in line:
+                filename = line[line.rfind('/') + 1:]
+            elif 'Inserted' in line:
+                temp = line.split()
+                count = int(temp[4])
+                table = temp[-1]
+                lookups.append([filename, table, count])
+
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        curs = dbh.cursor()
+        for item in lookups:
+            curs.execute("select count(*) from " + item[1] + " where filename='" + item[0] + "'")
+            res = curs.fetchall()[0][0]
+            self.assertEqual(res, item[2])
 
         sys.argv = temp
 
