@@ -186,7 +186,7 @@ class Ingest(object):
         if self.generateRows() == 1:
             return 1
         for k, v in self.constants.iteritems():
-            if isinstance(v, str):
+            if isinstance(v, (str, unicode)):
                 self.constants[k] = "'" + v + "'"
             else:
                 self.constants[k] = str(v)
@@ -205,11 +205,8 @@ class Ingest(object):
         sqlstr += ")"
         cursor = self.dbh.cursor()
         cursor.prepare(sqlstr)
-        #print sqlstr
         offset = 0
         try:
-            #for dt in self.sqldata:
-            #    print dt
             while offset < len(self.sqldata):
                 chunk = min(1000000, len(self.sqldata) - offset)
                 cursor.executemany(None, self.sqldata[offset:offset + chunk])
