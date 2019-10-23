@@ -44,8 +44,10 @@ def getfilelist(_file):
     f.close()
     return files
 
-if __name__ == '__main__':
-
+def main():
+    """
+        main function
+    """
     # var to hold to COADD_OBJECT_ID's
     coaddObjectIdDict = {}
 
@@ -80,7 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('--alt_table', action='store')
 
 
-    args, unknown_args = parser.parse_known_args()
+    args, _ = parser.parse_known_args()
     args = vars(args)
 
     bandcat = checkParam(args, 'bandcat_list', False)
@@ -401,4 +403,7 @@ if __name__ == '__main__':
         print "Skipping Extinction Band ingestion, none specified on command line"
 
     print "EXITING WITH RETVAL", retval
-    exit(retval)
+    return retval
+
+if __name__ == '__main__':
+    sys.exit(main())
