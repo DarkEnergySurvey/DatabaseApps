@@ -16,7 +16,23 @@ from databaseapps.objectcatalog import ObjectCatalog as ObjectCatalog
 from databaseapps.objectcatalog import Timing as Timing
 
 def checkParam(_args, param, required):
-    """ doc
+    """ Check whether the required arguments are present
+
+        Parameters
+        ----------
+        _args : dict
+            The given command line arguments
+
+        param : str
+            The parameter to check for
+
+        requires : bool
+            Whether the parameter is required or not
+
+        Returns
+        -------
+        various
+            The value of the parameter, or None if missing
     """
     if _args[param]:
         return _args[param]
@@ -28,11 +44,13 @@ def checkParam(_args, param, required):
 # end checkParam
 
 def printinfo(msg):
-    """doc """
+    """ Print out info """
     print time.strftime(ObjectCatalog.debugDateFormat) + " - " + msg
 
 def main():
-    hduList = None
+    """
+        main ingestion code
+    """
     runtime = Timing('Full ingestion')
     parser = argparse.ArgumentParser(description='Ingest objects from a fits catalog')
     parser.add_argument('-request', action='store')
@@ -45,7 +63,7 @@ def main():
     parser.add_argument('-section', '-s', help='db section in the desservices file')
     parser.add_argument('-des_services', help='desservices file')
 
-    args, unknown_args = parser.parse_known_args()
+    args, _ = parser.parse_known_args()
     args = vars(args)
 
     request = checkParam(args, 'request', True)
@@ -59,7 +77,7 @@ def main():
     section = checkParam(args, 'section', False)
 
     if request is None or filename is None or filetype is None or targettable is None:
-        exit(1)
+        return 1
     printinfo(runtime.report("INITIALIZE"))
     objectcat = ObjectCatalog(request=request,
                               filetype=filetype,
@@ -78,6 +96,7 @@ def main():
     printinfo(runtime.report("LOAD %s" % str(objectcat.getNumObjects())))
     printinfo("catalogIngest load of " + str(objectcat.getNumObjects()) + " objects from " + filename + " completed")
     printinfo(runtime.end())
+    return 0
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
