@@ -227,6 +227,16 @@ port    =   0
                 pass
         sys.argv = ['mepoch_ingest.py',
                     '--detcat',
+                    'cat/DES0445-4957_r4969p01_det_cat.fits']
+        output = ''
+        with capture_output() as (out, err):
+            self.assertEqual(mei.main(), 0)
+            output = out.getvalue().strip()
+
+        outlines = output.split('\n')
+
+        sys.argv = ['mepoch_ingest.py',
+                    '--detcat',
                     'cat/DES0445-4957_r4969p01_det_cat.fits',
                     '--bandcat_list',
                     'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-coadd-cat.list',
@@ -246,13 +256,12 @@ port    =   0
         with capture_output() as (out, err):
             self.assertEqual(mei.main(), 0)
             output = out.getvalue().strip()
-
+        outlines += output.split('\n')
         lookups = []
         table = None
         filename = None
         count = 0
-        output = output.split('\n')
-        for line in output:
+        for line in outlines:
             if 'Working on' in line:
                 filename = line[line.rfind('/') + 1:]
             elif 'Inserted' in line:
