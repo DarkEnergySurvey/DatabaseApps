@@ -227,7 +227,7 @@ port    =   0
                 pass
         sys.argv = ['mepoch_ingest.py',
                     '--detcat',
-                    'cat/DES0445-4957_r4969p01_det_cat.fits']
+                    'cat/test_det_cat.fits']
         output = ''
         with capture_output() as (out, err):
             self.assertEqual(mei.main(), 0)
@@ -237,25 +237,32 @@ port    =   0
 
         sys.argv = ['mepoch_ingest.py',
                     '--detcat',
-                    'cat/DES0445-4957_r4969p01_det_cat.fits',
+                    'cat/test_det_cat.fits',
                     '--bandcat_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-coadd-cat.list',
+                    'list/mepoch-ingest/coadd-cat.list',
+                    '--healpix',
+                    'cat/test_hpix.fits',
                     '--wavg_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-wavg-band.list',
+                    'list/mepoch-ingest/wavg-band.list',
                     '--wavg_oclink_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-wavg-oclink.list',
+                    'list/mepoch-ingest/wavg-oclink.list',
                     '--ccdgon_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-ccdgon.list',
+                    'list/mepoch-ingest/ccdgon.list',
                     '--molygon_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-molygon.list',
+                    'list/mepoch-ingest/molygon.list',
                     '--molygon_ccdgon_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-molyccd.list',
+                    'list/mepoch-ingest/molyccd.list',
                     '--coadd_object_molygon_list',
-                    'list/mepoch-ingest/DES0445-4957_r4969p01_meingest-cobjmoly.list']
+                    'list/mepoch-ingest/cobjmoly.list',
+                    '--extinct',
+                    'cat/test_ebv-cat.fits',
+                    '--extinct_band_list',
+                    'list/mepoch-ingest/xcorr.list']
         output = ''
         with capture_output() as (out, err):
             self.assertEqual(mei.main(), 0)
             output = out.getvalue().strip()
+
         outlines += output.split('\n')
         lookups = []
         table = None
