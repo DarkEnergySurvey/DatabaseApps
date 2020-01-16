@@ -37,11 +37,11 @@ class CoaddCatalog(FitsIngest):
         """
         sqlstr = '''
             select band, tilename, pfw_attempt_id
-            from %s
+            from {}
             where filename=:fname
             '''
         cursor = self.dbh.cursor()
-        cursor.execute(sqlstr % self.catalogtable, {"fname" :self.shortfilename})
+        cursor.execute(sqlstr.format(self.catalogtable), {"fname" :self.shortfilename})
         records = cursor.fetchall()
 
         if records:
@@ -71,11 +71,11 @@ class CoaddCatalog(FitsIngest):
         """
         # Oracle sql to get id block all at once
         sqlstr = '''
-            select %s.nextval from dual
-            connect by level < %d
+            select {}.nextval from dual
+            connect by level < {:d}
             '''
         cursor = self.dbh.cursor()
-        cursor.execute(sqlstr % (self.idsequence, (numobjs+1)))
+        cursor.execute(sqlstr.format(self.idsequence, (numobjs+1)))
         records = cursor.fetchall()
 
         return records
@@ -86,15 +86,15 @@ class CoaddCatalog(FitsIngest):
         """
         if table is not None:
             self.printinfo('Getting Coadd IDs from alternate table')
-            sqlstr = "select object_number, coadd_object_id from %s where pfw_attempt_id=%s" % (table, pfwid)
+            sqlstr = f"select object_number, coadd_object_id from {table} where pfw_attempt_id={pfwid}"
             tdbh = desdbi.DesDbi(services, section, retry=True)
             cursor = tdbh.cursor()
         else:
             self.printinfo("Getting Coadd IDs from database\n")
-            sqlstr = "select object_number, id from %s where filename='%s'" % (self.targettable, self.shortfilename)
+            sqlstr = f"select object_number, id from {self.targettable} where filename='{self.shortfilename}'"
             cursor = self.dbh.cursor()
         cursor.execute(sqlstr)
         records = cursor.fetchall()
         for r in records:
-            if not self.idDict.has_key(r[0]):
+            if r[0] not in self.idDict:
                 self.idDict[r[0]] = r[1]

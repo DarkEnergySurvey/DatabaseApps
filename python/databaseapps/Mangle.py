@@ -20,7 +20,7 @@ class Mangle(Ingest):
         self.checkcount = checkcount
         self.skipmissing = skipmissing
 
-        if "COADD_OBJECT_ID" in self.dbDict[self.hdu].keys():
+        if "COADD_OBJECT_ID" in self.dbDict[self.hdu]:
             self.coadd_id = self.dbDict[self.hdu]["COADD_OBJECT_ID"].position[0]
 
     def parseCSV(self, filename, types):
@@ -63,16 +63,16 @@ class Mangle(Ingest):
                     miscutils.fwdebug_print(d)
             f.close()
             if skip > 0:
-                print "Skipped %i items which were not found in the alternate table." % skip
+                print(f"Skipped {skip:d} items which were not found in the alternate table.")
         except:
             se = sys.exc_info()
             e = se[0]
             tb = se[2]
-            print "Exception raised:", e
-            print "Traceback: "
+            print("Exception raised:", e)
+            print("Traceback: ")
             traceback.print_tb(tb)
 
-            miscutils.fwdebug_print("Error in line %i of %s" % (linecount, self.shortfilename))
+            miscutils.fwdebug_print(f"Error in line {linecount:d} of {self.shortfilename}")
             raise
 
     def generateRows(self):
@@ -90,20 +90,20 @@ class Mangle(Ingest):
                 else:
                     types.append(str)
             self.parseCSV(self.fullfilename, types)
-            self.orderedColumns = self.dbDict[self.hdu].keys()
-            if self.checkcount and len(self.idDict.keys()) != len(self.sqldata):
+            self.orderedColumns = list(self.dbDict[self.hdu])
+            if self.checkcount and len(self.idDict) != len(self.sqldata):
                 self.status = 1
-                miscutils.fwdebug_print("Incorrect number of rows in %s. Count is %i, should be %i" % (self.shortfilename, len(self.sqldata), len(self.idDict.keys())))
+                miscutils.fwdebug_print(f"Incorrect number of rows in {self.shortfilename}. Count is {len(self.sqldata):d}, should be {len(self.idDict):d}")
                 return 1
             return 0
         except:
             se = sys.exc_info()
             e = se[1]
             tb = se[2]
-            print "Exception raised:", e
-            print "Traceback: "
+            print("Exception raised:", e)
+            print("Traceback: ")
             traceback.print_tb(tb)
-            print " "
+            print(" ")
             self.status = 1
             return 1
 

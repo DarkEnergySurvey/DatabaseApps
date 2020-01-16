@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
     Merge object tables
 """
@@ -50,22 +50,22 @@ if __name__ == '__main__':
     tempschema = None
 
     if temptable is None:
-        temptable = "DESSE_REQNUM%07d" % int(args['request'])
+        temptable = f"DESSE_REQNUM{int(args['request']):07d}"
         tempschema = targetschema
     else:
         tempschema, temptable = parseTableName(args['temptable'])
 
     if tempschema:
-        print "Merging %s into %s..." % (tempschema + '.' + temptable, args['targettable'])
+        print(f"Merging {tempschema + '.' + temptable} into {args['targettable']}...")
     else:
-        print "Merging %s into %s..." % (temptable, args['targettable'])
+        print(f"Merging {temptable} into {args['targettable']}...")
 
     dbh = desdbi.DesDbi()
     cursor = dbh.cursor()
     if targetschema is None:
         cursor.callproc("pMergeObjects", [temptable, targettable, tempschema, targetschema])
     else:
-        cursor.callproc("%s.pMergeObjects" % targetschema, [temptable, targettable, tempschema, targetschema])
+        cursor.callproc(f"{targetschema}.pMergeObjects", [temptable, targettable, tempschema, targetschema])
 
     cursor.close()
-    print "Merge complete"
+    print("Merge complete")

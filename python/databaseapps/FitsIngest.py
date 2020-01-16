@@ -53,7 +53,7 @@ class FitsIngest(Ingest):
         attrsToCollect = self.dbDict[self.objhdu]
         linecount = 0
         try:
-            attrs = attrsToCollect.keys()
+            attrs = list(attrsToCollect.keys())
 
             # get the actual columns in the fits table
             allcols = self.fits[self.objhdu].get_colnames()
@@ -92,7 +92,7 @@ class FitsIngest(Ingest):
                     for idx in range(0, len(self.orderedColumns)):
                         # if the COADD_OBJECT_ID dictionary is being created
                         if self.generateID and self.orderedColumns[idx] == "NUMBER":
-                            if self.idDict.has_key(row[idx]):
+                            if row[idx] in self.idDict:
                                 outrow.insert(0, self.idDict[row[idx]])
                             else:
                                 coadd_id = self.coadd_ids.pop()
@@ -106,7 +106,7 @@ class FitsIngest(Ingest):
                             try:
                                 outrow.append(self.idDict[row[idx]])
                             except KeyError:
-                                miscutils.fwdebug_print("ERROR: Coadd number (%i) specified that does not have a corresponding coadd id, found in row %i." % (row[idx], linecount))
+                                miscutils.fwdebug_print(f"ERROR: Coadd number ({row[idx]:d}) specified that does not have a corresponding coadd id, found in row {linecount:d}.")
                                 return 1
 
                         # if this column is an array of values
@@ -126,23 +126,23 @@ class FitsIngest(Ingest):
                                 outrow.append(row[idx])
                     self.sqldata.append(outrow)
         except:
-            miscutils.fwdebug_print("Possible error in line %i of %s" % (linecount, self.shortfilename))
+            miscutils.fwdebug_print(f"Possible error in line {linecount:d} of {self.shortfilename}")
             se = sys.exc_info()
             e = se[1]
             tb = se[2]
-            print "Exception raised: ", e
-            print "Traceback: "
+            print("Exception raised: ", e)
+            print("Traceback: ")
             traceback.print_tb(tb)
-            print " "
+            print(" ")
             self.status = 1
             retval = 1
         finally:
             if self.generateID:
                 self.dbDict[self.objhdu]['ID'] = Entry(column_name='ID', position=0)
                 self.orderedColumns = ['ID'] + self.orderedColumns
-            elif self.matchCount and len(self.idDict.keys()) != len(self.sqldata):
+            elif self.matchCount and len(self.idDict) != len(self.sqldata):
                 self.status = 1
                 retval = 1
-                miscutils.fwdebug_print("Incorrect number of rows in %s. Count is %i, should be %i" % (self.shortfilename, len(self.sqldata), len(self.idDict.keys())))
+                miscutils.fwdebug_print(f"Incorrect number of rows in {self.shortfilename}. Count is {len(self.sqldata):d}, should be {len(self.idDict):d}")
 
             return retval

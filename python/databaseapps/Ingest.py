@@ -4,12 +4,12 @@
 import time
 import traceback
 import sys
-from collections import OrderedDict
+import collections
 from databaseapps.ingestutils import IngestUtils as ingestutils
 from despymisc import miscutils
 from despydb import desdbi
 
-class Ingest(object):
+class Ingest:
     """ General base class for ingesting data into the database
 
         Parameters
@@ -41,7 +41,7 @@ class Ingest(object):
             self.dbh = dbh
         self.cursor = self.dbh.cursor()
         # get the table name that is being filled, based on the input data type
-        self.cursor.execute("select table_name from ops_datafile_table where filetype='%s'" % (filetype))
+        self.cursor.execute(f"select table_name from ops_datafile_table where filetype='{filetype}'")
         self.targettable = self.cursor.fetchall()[0][0]
         self.filetype = filetype
         self.idColumn = None
@@ -75,7 +75,7 @@ class Ingest(object):
                 The message to display in stdout
         """
         if self._debug:
-            print time.strftime(self.debugDateFormat) + " - " + msg
+            print(time.strftime(self.debugDateFormat) + " - " + msg)
 
     def info(self, msg):
         """ Generates an info message.
@@ -85,16 +85,16 @@ class Ingest(object):
             msg : str
                 The message to display in stdout
         """
-        print time.strftime(self.debugDateFormat) + " - " + msg
+        print(time.strftime(self.debugDateFormat) + " - " + msg)
 
     def getObjectColumns(self):
         """ Get the database columns that are being filled, and their data type
 
         """
         results = {}
-        sqlstr = "select hdu, UPPER(attribute_name), position, column_name, datafile_datatype from ops_datafile_metadata where filetype = '%s'" % (self.filetype)
+        sqlstr = f"select hdu, UPPER(attribute_name), position, column_name, datafile_datatype from ops_datafile_metadata where filetype = '{self.filetype}'"
         if self.order is not None:
-            sqlstr += " order by %s" % (self.order)
+            sqlstr += f" order by {self.order}"
         cursor = self.dbh.cursor()
         cursor.execute(sqlstr)
         records = cursor.fetchall()
@@ -111,7 +111,7 @@ class Ingest(object):
                 else:
                     hdr = rec[0]
             if hdr not in results:
-                results[hdr] = OrderedDict()
+                results[hdr] = collections.OrderedDict()
             if rec[1] not in results[hdr]:
                 results[hdr][rec[1]] = Entry(hdu=hdr, attribute_name=rec[1], position=rec[2], column_name=rec[3], dtype=rec[4])
             else:
@@ -123,7 +123,7 @@ class Ingest(object):
         """ Get the number of items to be ingested, must be overloaded by child classes
 
         """
-        return None
+        return 0
 
     def generateRows(self):
         """ convert the input data into a list of lists for ingestion into the database
@@ -140,7 +140,7 @@ class Ingest(object):
         while num < 5:
             num += 1
             try:
-                sqlstr = "select count(*) from %s where filename='%s'" % (self.targettable, self.shortfilename)
+                sqlstr = f"select count(*) from {self.targettable} where filename='{self.shortfilename}'"
                 cursor = self.dbh.cursor()
                 cursor.execute(sqlstr)
                 count = cursor.fetchone()[0]
@@ -185,23 +185,21 @@ class Ingest(object):
         #pylint: disable=lost-exception
         if self.generateRows() == 1:
             return 1
-        for k, v in self.constants.iteritems():
-            if isinstance(v, (str, unicode)):
+        for k, v in self.constants.items():
+            if isinstance(v, str):
                 self.constants[k] = "'" + v + "'"
             else:
                 self.constants[k] = str(v)
         columns = []
-
         for att in self.orderedColumns:
             columns += self.dbDict[self.objhdu][att].column_name
         places = []
         for i in range(len(columns)):
-            places.append(":%d" % (i+1))
-
-        sqlstr = "insert into %s ( " % (self.targettable)
-        sqlstr += ', '.join(self.constants.keys() + columns)
+            places.append(f":{i + 1:d}")
+        sqlstr = f"insert into {self.targettable} ( "
+        sqlstr += ', '.join(list(self.constants.keys()) + columns)
         sqlstr += ") values ("
-        sqlstr += ', '.join(self.constants.values() + places)
+        sqlstr += ', '.join(list(self.constants.values()) + places)
         sqlstr += ")"
         cursor = self.dbh.cursor()
         cursor.prepare(sqlstr)
@@ -213,16 +211,16 @@ class Ingest(object):
                 offset += chunk
             cursor.close()
             self.dbh.commit()
-            self.info("Inserted %d rows into table %s" % (len(self.sqldata), self.targettable))
+            self.info(f"Inserted {len(self.sqldata):d} rows into table {self.targettable}")
             self.status = 0
         except:
             se = sys.exc_info()
             e = str(se[1])
             tb = se[2]
-            print "Exception raised: ", e.strip(), " while ingesting ", self.shortfilename
-            print "Traceback: "
+            print("Exception raised: ", e.strip(), " while ingesting ", self.shortfilename)
+            print("Traceback: ")
             traceback.print_tb(tb)
-            print " "
+            print(" ")
             self.dbh.rollback()
             self.status = 1
         finally:
@@ -232,10 +230,10 @@ class Ingest(object):
         """ Generic print statement with time stamp
 
         """
-        print time.strftime(self.debugDateFormat) + " - " + msg
+        print(time.strftime(self.debugDateFormat) + " - " + msg)
 
 
-class Entry(object):
+class Entry:
     """ Simple light weight class to hold entries from the ops_datafile_metadata
         table
 
@@ -252,10 +250,10 @@ class Entry(object):
             if item in kwargs:
                 setattr(self, item, [kwargs[item]])
                 del kwargs[item]
-        for kw, arg in kwargs.iteritems():
+        for kw, arg in kwargs.items():
             setattr(self, kw, arg)
         if len(self.position) != len(self.column_name):
-            raise Exception("BAD MATCH %d  %d" % (len(self.position), len(self.column_name)))
+            raise Exception(f"BAD MATCH {len(self.position):d}  {len(self.column_name):d}")
 
     def append(self, column_name, position):
         """ Method to append data to specific elements of the class

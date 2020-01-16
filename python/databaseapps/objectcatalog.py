@@ -11,12 +11,12 @@ __version__ = "$Rev: 11430 $"
 import time
 import re
 import copy
-from collections import OrderedDict
+import collections
 import fitsio
 from despydb import desdbi
 from databaseapps.ingestutils import IngestUtils as ingestutils
 
-class Timing(object):
+class Timing:
     """ Class for timing
 
         Parameters
@@ -37,16 +37,16 @@ class Timing(object):
             text : str
                 Text to report with the results
         """
-        txt = "TIMING: %s finished in %.2f seconds" % (text, time.time()-self.current)
+        txt = f"TIMING: {text} finished in {time.time() - self.current:.2f} seconds"
         self.current = time.time()
         return txt
 
     def end(self):
         """ End the timer
         """
-        return "TIMING: %s finished in %.2f seconds" % (self.name, time.time()-self.start)
+        return f"TIMING: {self.name} finished in {time.time() - self.start:.2f} seconds"
 
-class ObjectCatalog(object):
+class ObjectCatalog:
     """
         Class for ingesting objects -- needs to be updated
     """
@@ -103,16 +103,15 @@ class ObjectCatalog(object):
             self.dump = False
         self.consts = []
 
-        self.debug("start resolveDbObject() for target: %s" % targettable)
+        self.debug(f"start resolveDbObject() for target: {targettable}")
         (self.targetschema, self.targettable) = ingestutils.resolveDbObject(targettable, self.dbh)
         if not temptable:
-            self.temptable = "DESSE_REQNUM%07d" % int(request)
+            self.temptable = f"DESSE_REQNUM{int(request):07d}"
             self.tempschema = self.targetschema
         else:
-            self.debug("start resolveDbObject() for temp: %s" % temptable)
+            self.debug(f"start resolveDbObject() for temp: {temptable}")
             (self.tempschema, self.temptable) = ingestutils.resolveDbObject(temptable, self.dbh)
-        self.debug("target schema,table = %s, %s; temp= %s, %s" %
-                   (self.targetschema, self.targettable, self.tempschema, self.temptable))
+        self.debug(f"target schema,table = {self.targetschema}, {self.targettable}; temp= {self.tempschema}, {self.temptable}")
 
         if self.dump:
             self.constDict = {}
@@ -141,7 +140,7 @@ class ObjectCatalog(object):
                 The message
         """
         if self.dodebug:
-            print time.strftime(self.debugDateFormat) + " - " + msg
+            print(time.strftime(self.debugDateFormat) + " - " + msg)
 
     def info(self, msg):
         """ Print info messages
@@ -151,12 +150,12 @@ class ObjectCatalog(object):
             msg : str
                 The message
         """
-        print time.strftime(self.debugDateFormat) + " - " + msg
+        print(time.strftime(self.debugDateFormat) + " - " + msg)
 
     def getObjectColumns(self):
         """ Get the columns from the tables
         """
-        results = OrderedDict()
+        results = collections.OrderedDict()
         sqlstr = '''
             select hdu, UPPER(attribute_name), NVL(position,0),
                 column_name, NVL(derived,'h'),
@@ -176,7 +175,7 @@ class ObjectCatalog(object):
         records = cursor.fetchall()
         #print records
         if not records:
-            exit("No columns listed for filetype %s in ops_datafile_metadata, exiting" % (self.filetype))
+            exit(f"No columns listed for filetype {self.filetype} in ops_datafile_metadata, exiting")
         for rec in records:
             #print rec
             hdr = None
@@ -190,7 +189,7 @@ class ObjectCatalog(object):
                 else:
                     hdr = rec[0]
             if hdr not in results:
-                results[hdr] = OrderedDict()
+                results[hdr] = collections.OrderedDict()
             if rec[1] not in results[hdr]:
                 results[hdr][rec[1]] = [[rec[3]], rec[4], rec[5], [str(rec[2])]]
             else:
@@ -205,10 +204,10 @@ class ObjectCatalog(object):
     def checkForArrays(self, records):
         """ Check the data for arrays
         """
-        results = OrderedDict()
+        results = collections.OrderedDict()
         pat = re.compile(r'^(.*)_(\d*)$', re.IGNORECASE)
         if self.objhdu in records:
-            for k, v in records[self.objhdu].iteritems():
+            for k, v in records[self.objhdu].items():
                 attrname = None
                 pos = 0
                 m = pat.match(k)
@@ -232,26 +231,21 @@ class ObjectCatalog(object):
         quoteit = None
         hdr = self.fits[hduName].read_header()
 
-        for attribute, dblist in self.dbDict[hduName].iteritems():
+        for attribute, dblist in self.dbDict[hduName].items():
             for col in dblist[self.COLUMN_NAME]:
                 if dblist[self.DERIVED] == 'c':
                     value = self.funcDict[col](hdr[attribute])
                 elif dblist[self.DERIVED] == 'h':
                     value = str(hdr[attribute]).strip()
-                if dblist[self.DATATYPE] == 'char':
-                    quoteit = True
-                else:
-                    quoteit = False
+                quoteit = dblist[self.DATATYPE] == 'char'
+
                 self.constDict[col] = [value, quoteit]
                 self.constlist.append(col)
 
     def loadingTarget(self):
         """ Report if we are laoding into the target table
         """
-        if self.targettable == self.temptable and self.targetschema == self.tempschema:
-            return True
-        else:
-            return False
+        return self.targettable == self.temptable and self.targetschema == self.tempschema
 
 
     def setStart(self):
@@ -272,9 +266,9 @@ class ObjectCatalog(object):
     def parseFitsTypeLength(self, formatsByColumn):
         """ Parse fits types
         """
-        colsizes = OrderedDict()
-        coltypes = OrderedDict()
-        for col, dtype in formatsByColumn.iteritems():
+        colsizes = collections.OrderedDict()
+        coltypes = collections.OrderedDict()
+        for col, dtype in formatsByColumn.items():
             m = re.search(r'^(\d*)(.*)$', dtype)
             if m.group(1) and m.group(2) != 'A':
                 colsizes[col] = int(m.group(1))
@@ -287,7 +281,7 @@ class ObjectCatalog(object):
     def executeIngest(self):
         """ Ingest the data
         """
-        for hduName in self.dbDict.keys():
+        for hduName in self.dbDict:
             if hduName not in [self.objhdu, 'WCL']:
                 self.getConstValuesFromHeader(hduName)
         self.setStart()
@@ -297,7 +291,7 @@ class ObjectCatalog(object):
         columns = copy.deepcopy(self.constlist)
 
         for headerName in orderedFitsColumns:
-            if headerName.upper() in dbobjdata.keys():
+            if headerName.upper() in dbobjdata:
                 for colname in dbobjdata[headerName.upper()][self.COLUMN_NAME]:
                     columns.append(colname)
 
@@ -305,7 +299,7 @@ class ObjectCatalog(object):
         attrsToCollect = self.dbDict[self.objhdu]
 
 
-        attrs = attrsToCollect.keys()
+        attrs = list(attrsToCollect.keys())
         orderedFitsColumns = []
         allcols = self.fits[self.objhdu].get_colnames()
         for col in allcols:
@@ -318,7 +312,7 @@ class ObjectCatalog(object):
         while endrow < lastrow:
             startrow = endrow
             endrow = min(startrow+50000, lastrow)
-            print startrow, endrow, lastrow
+            print(startrow, endrow, lastrow)
             data = fitsio.read(self.fullfilename,
                                rows=range(startrow, endrow),
                                columns=orderedFitsColumns,
@@ -327,7 +321,7 @@ class ObjectCatalog(object):
             hdu = 'LDAC_OBJECTS'
             for row in data:
                 outrow = {}
-                for item, value in self.constDict.iteritems():
+                for item, value in self.constDict.items():
                     outrow[item] = value[0]
                 for idx, col in enumerate(orderedFitsColumns):
                     # if this column is an array of values
@@ -359,14 +353,13 @@ class ObjectCatalog(object):
 
         colStr = ','.join(columns)
 
-        stmt = 'INSERT INTO %s (%s) VALUES (%s)' % (table, colStr, vals)
-        #print stmt
+        stmt = f'INSERT INTO {table} ({colStr}) VALUES ({vals})'
 
         curs = self.dbh.cursor()
         try:
             curs.executemany(stmt, rows)
             #curs.execute('COMMIT WRITE BATCH NOWAIT')
-            curs.execute('commit')
+            self.dbh.commit()
         finally:
             curs.close()
 
@@ -376,7 +369,7 @@ class ObjectCatalog(object):
         """
         sqlstr = '''
             select count(*), reqnum
-            from %s
+            from {}
             where filename=:fname
             group by reqnum
             '''
@@ -386,7 +379,7 @@ class ObjectCatalog(object):
             try:
                 cursor = self.dbh.cursor()
                 schtbl = self.targetschema + '.' + self.targettable
-                cursor.execute(sqlstr % schtbl, {"fname":self.shortfilename})
+                cursor.execute(sqlstr.format(schtbl), {"fname":self.shortfilename})
                 records = cursor.fetchall()
 
                 if records:
@@ -406,14 +399,13 @@ class ObjectCatalog(object):
     def createIngestTable(self):
         """ Create the needed table
         """
-        tablespace = "DESSE_REQNUM%07d_T" % int(self.request)
+        tablespace = f"DESSE_REQNUM{int(self.request):07d}_T"
 
         cursor = self.dbh.cursor()
-        self.info("Creating tablespace %s and table %s.%s if they do not already exist"
-                  % (tablespace, self.tempschema, self.temptable))
+        self.info(f"Creating tablespace {tablespace} and table {self.tempschema}.{self.temptable} if they do not already exist")
         cursor.callproc("createObjectsTable", [self.temptable, tablespace, self.targettable])
         cursor.close()
-        self.info("Temp table %s.%s is ready" % (self.tempschema, self.temptable))
+        self.info(f"Temp table {self.tempschema}.{self.temptable} is ready")
 
 
     def isLoaded(self):
