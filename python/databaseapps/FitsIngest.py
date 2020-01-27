@@ -3,8 +3,10 @@
 """
 import sys
 import traceback
+import math
 
 import fitsio
+import numpy as np
 from databaseapps.Ingest import Ingest, Entry
 from despymisc import miscutils
 
@@ -84,7 +86,22 @@ class FitsIngest(Ingest):
                     # IMPORTANT! Must convert numpy array to python list, or
                     # suffer big performance hit. This is due to numpy bug
                     # fixed in more recent version than one in EUPS.
-                    row = row.tolist()
+                    # replace NaN's with None as cx_Oracle is now stupid about
+                    # NaN's
+                    # this has to be done manually as np.isnan cannot operate
+                    # on the given np.void object, or any nested objects
+                    #nrow = np.array([row.tolist()], dtype=data.dtype)[0]
+                    # have to explicitly cast to a list because tolist() on a numpy.void
+                    # object returns a tuple!
+                    row = list(row.tolist())
+                    for i, item in enumerate(row):
+                        if isinstance(item, np.ndarray):
+                            row[i] = np.where(np.isnan(item), None, item)
+                        elif isinstance(item, list):
+                            raise
+                        elif not isinstance(item, (str, bytes)) and (np.isnan(item) or math.isnan(item)):
+                            row[i] = None
+                    #row = nrow.tolist()
 
                     # array to hold values for this FITS row
                     outrow = []
@@ -98,7 +115,6 @@ class FitsIngest(Ingest):
                                 coadd_id = self.coadd_ids.pop()
                                 self.idDict[row[idx]] = coadd_id
                                 outrow.insert(0, coadd_id)
-
                             outrow.append(row[idx])
                         # if this is NUMBER column, look up COADD_OBJECT_ID and
                         # then skip it

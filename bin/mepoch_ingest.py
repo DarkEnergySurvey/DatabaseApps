@@ -155,7 +155,7 @@ def main():
         se = sys.exc_info()
         e = se[1]
         tb = se[2]
-        print("Exception raised2:", e)
+        print("Exception raised:", e)
         print("Traceback: ")
         traceback.print_tb(tb)
         print(" ")
