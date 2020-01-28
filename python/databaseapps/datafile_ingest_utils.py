@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # $Id: datafile_ingest_utils.py 40946 2015-12-02 16:16:07Z mgower $
 # $Rev:: 40946                            $:  # Revision of last commit.
 # $LastChangedBy:: mgower                 $:  # Author of last commit.
@@ -7,7 +6,7 @@
 """  Functions used to ingest non-metadata from a file into a database table based upon filetype """
 
 import sys
-import pyfits
+from astropy.io import fits
 import numpy
 
 import despymisc.miscutils as miscutils
@@ -21,7 +20,7 @@ DI_FORMAT = 'format'
 ######################################################################
 def ci_get(mydict, mykey):
     """ a case-insensitive dictionary getter """
-    for key, val in mydict.iteritems():
+    for key, val in mydict.items():
         if mykey.lower() == key.lower():
             return val
     return None
@@ -35,32 +34,18 @@ def print_node(indict, level, filehandle):
     #for i in range(level):
     #    leveltabs = leveltabs + "\t"
 
-    for key, value in indict.iteritems():
+    for key, value in indict.items():
         if isinstance(value, dict):
-            print >>filehandle, leveltabs + "<" + str(key) + ">"
+            print(leveltabs + "<" + str(key) + ">", file=filehandle)
             print_node(value, level+1, filehandle)
-            print >>filehandle, leveltabs + "</" + str(key) + ">"
+            print(leveltabs + "</" + str(key) + ">", file=filehandle)
         else:
-            print >>filehandle, leveltabs + str(key) + "=" + str(value)
+            print(leveltabs + str(key) + "=" + str(value), file=filehandle)
 # end print_node
 
 ######################################################################
 def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict, dbh):
     """ ingest contents of a data file """
-    # WARNING: alters dbh session's NLS_TIMESTAMP_FORMAT
-
-#    #[tablename, metadata] = dbh.get_datafile_metadata(filetype)
-#
-#    if tablename == None or metadata == None:
-#        sys.stderr.write("ERROR: no metadata in database for filetype=%s. Check OPS_DATAFILE_TABLE and OPS_DATAFILE_METADATA\n" % filetype)
-#        exit(1)
-#
-#    if is_ingested(sourcefile, tablename, dbh):
-#        print "INFO: file " + sourcefile + " is already ingested\n"
-#        exit(0)
-#
-#    print "datafile_ingest.py: destination table = " + tablename
-#    #print_node(metadata, 0, sys.stdout)
     columnlist = []
     data = []
     indata = []
@@ -71,14 +56,14 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
 
     dateformat = None
 
-    for hdu, attrdict in metadata.iteritems():
-        for attribute, cols in attrdict.iteritems():
+    for hdu, attrdict in metadata.items():
+        for attribute, cols in attrdict.items():
             for indx, colname in enumerate(cols[DI_COLUMNS]):
                 columnlist.append(colname)
                 # handle timestamp format; does not support multiple formats in one input file
                 if cols[DI_DATATYPE] == 'date':
                     if dateformat and dateformat != cols[DI_FORMAT]:
-                        sys.stderr.write("ERROR: Unsupported configuration for filetype=%s: Multiple different date formats found\n" % filetype)
+                        sys.stderr.write(f"ERROR: Unsupported configuration for filetype={filetype}: Multiple different date formats found\n")
                         exit(1)
                     dateformat = cols[DI_FORMAT]
                 ###
@@ -87,9 +72,9 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
     # handle timestamp format; does not support multiple formats in one input file
     if dateformat:
         cur = dbh.cursor()
-        cur.execute("ALTER SESSION SET NLS_TIMESTAMP_FORMAT = '%s'" % dateformat)
+        cur.execute(f"ALTER SESSION SET NLS_TIMESTAMP_FORMAT = '{dateformat}'")
 
-    for hdu, attrdict in datadict.iteritems():
+    for hdu, attrdict in datadict.items():
         indata = []
         if hasattr(attrdict, "keys"):
             indata.append(attrdict)
@@ -100,7 +85,7 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
         for inrow in indata:
             row = {}
             rownum += 1
-            for attribute, coldata in metadata[hdu].iteritems():
+            for attribute, coldata in metadata[hdu].items():
                 for indx, colname in enumerate(coldata[DI_COLUMNS]):
                     attr = None
                     if isinstance(inrow, dict):
@@ -142,37 +127,12 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
 # end ingest_datafile_contents
 
 
-
-######################################################################
-#def get_sections_for_filetype(filetype, dbh):
-#    """ Get definitions from database for what and how to save the data """
-#
-#    sqlstr = "select distinct hdu from OPS_DATAFILE_METADATA where filetype=%s"
-#    sqlstr = sqlstr % dbh.get_named_bind_string('ftype')
-#
-#    result = []
-#    curs = dbh.cursor()
-#    curs.execute(sqlstr, {"ftype": filetype})
-#    for row in curs:
-#        result.append(row[0])
-#    curs.close()
-#    return result
-# end get_sections_for_filetype
-
-
-######################################################################
-#def get_di_config(filetype, dbh):
-#    """ Query DB to get configuration for what and how to save the data """
-#
-#    [didefs['tablename'], didefs['metadata] = dbh.get_datafile_metadata(filetype)
-
-
 ######################################################################
 def is_ingested(filename, tablename, dbh):
     """ Check whether the data for a file is already ingested """
 
-    sqlstr = "select 1 from dual where exists(select * from %s where filename=%s)"
-    sqlstr = sqlstr % (tablename, dbh.get_named_bind_string('fname'))
+    sqlstr = "select 1 from dual where exists(select * from {} where filename={})"
+    sqlstr = sqlstr.format(tablename, dbh.get_named_bind_string('fname'))
 
     found = False
     curs = dbh.cursor()
@@ -194,7 +154,7 @@ def get_fits_data(fullname, whichhdu):
     except ValueError:
         hdu = str(whichhdu)
 
-    hdulist = pyfits.open(fullname)
+    hdulist = fits.open(fullname)
     hdr = hdulist[hdu].header
 
     mydict = {}
@@ -213,7 +173,7 @@ def datafile_ingest_main(dbh, filetype, fullname, tablename, didatadefs):
     """ Control process for ingesting data from a file """
 
     #sections_wanted = get_sections_for_filetype(filetype, dbh)
-    sections_wanted = didatadefs.keys()
+    sections_wanted = list(didatadefs.keys())
 
     if 'xml' in filetype:
         datadict = Xmlslurper(fullname, sections_wanted).gettables()

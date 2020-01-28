@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
     Ingest catalogs
 """
@@ -12,8 +12,8 @@ __version__ = "$Rev: 11430 $"
 import sys
 import time
 import argparse
-from databaseapps.objectcatalog import ObjectCatalog as ObjectCatalog
-from databaseapps.objectcatalog import Timing as Timing
+from databaseapps.objectcatalog import ObjectCatalog
+from databaseapps.objectcatalog import Timing
 
 def checkParam(_args, param, required):
     """ Check whether the required arguments are present
@@ -36,16 +36,15 @@ def checkParam(_args, param, required):
     """
     if _args[param]:
         return _args[param]
+    if required:
+        sys.stderr.write(f"Missing required parameter: {param}\n")
     else:
-        if required:
-            sys.stderr.write("Missing required parameter: %s\n" % param)
-        else:
-            return None
+        return None
 # end checkParam
 
 def printinfo(msg):
     """ Print out info """
-    print time.strftime(ObjectCatalog.debugDateFormat) + " - " + msg
+    print(time.strftime(ObjectCatalog.debugDateFormat) + " - " + msg)
 
 def main():
     """
@@ -88,12 +87,12 @@ def main():
                               dumponly=dump,
                               services=services,
                               section=section)
-    printinfo(runtime.report("READ %s" % str(objectcat.getNumObjects())))
+    printinfo(runtime.report(f"READ {str(objectcat.getNumObjects())}"))
 
     objectcat.createIngestTable()
     printinfo(runtime.report("CREATE"))
     objectcat.executeIngest()
-    printinfo(runtime.report("LOAD %s" % str(objectcat.getNumObjects())))
+    printinfo(runtime.report(f"LOAD {str(objectcat.getNumObjects())}"))
     printinfo("catalogIngest load of " + str(objectcat.getNumObjects()) + " objects from " + filename + " completed")
     printinfo(runtime.end())
     return 0

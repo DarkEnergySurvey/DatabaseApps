@@ -2,9 +2,7 @@
     Utility class methods
 """
 
-import calendar
-
-class IngestUtils(object):
+class IngestUtils:
     """ Class of static untility methods
     """
     @staticmethod
