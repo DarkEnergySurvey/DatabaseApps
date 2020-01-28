@@ -2,11 +2,11 @@ import distutils
 from distutils.core import setup
 import glob
 
-bin_files = glob.glob("bin/*") 
+bin_files = glob.glob("bin/*")
 
 # The main call
 setup(name='DatabaseApps',
-      version ='2.0.9',
+      version ='3.0.0',
       license = "GPL",
       description = "Provide DES database access methods",
       author = "Michelle Gower",
