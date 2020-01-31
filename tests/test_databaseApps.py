@@ -1,15 +1,14 @@
-#!/usr/bin/env python2
-# pylint: skip-file
+#!/usr/bin/env python3
 
 import unittest
 import os
 import stat
-from MockDBI import MockConnection
 import sys
 import copy
-
 from contextlib import contextmanager
-from StringIO import StringIO
+from io import StringIO
+
+from MockDBI import MockConnection
 
 import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
@@ -31,7 +30,7 @@ def capture_output():
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print 'SETUP'
+        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -60,7 +59,7 @@ server  =   Minimal_server
 type    =   test
 port    =   0
 """)
-        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
 
     @classmethod
     def tearDownClass(cls):
@@ -113,7 +112,7 @@ port    =   0
 class TestDatafileIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print 'SETUP'
+        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -142,7 +141,7 @@ server  =   Minimal_server
 type    =   test
 port    =   0
 """)
-        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
 
     @classmethod
     def tearDownClass(cls):
@@ -180,7 +179,7 @@ port    =   0
 class TestMepochIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print 'SETUP'
+        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -209,7 +208,7 @@ server  =   Minimal_server
 type    =   test
 port    =   0
 """)
-        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
 
     @classmethod
     def tearDownClass(cls):
@@ -290,7 +289,7 @@ port    =   0
 class TestIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print 'SETUP'
+        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -319,7 +318,7 @@ server  =   Minimal_server
 type    =   test
 port    =   0
 """)
-        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP )))
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
 
     @classmethod
     def tearDownClass(cls):
@@ -369,7 +368,7 @@ port    =   0
     def test_blanks(self):
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
         ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
-        self.assertIsNone(ing.getNumObjects())
+        self.assertEqual(ing.getNumObjects(), 0)
         self.assertIsNone(ing.generateRows())
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
