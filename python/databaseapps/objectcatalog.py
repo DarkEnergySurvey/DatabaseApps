@@ -175,7 +175,7 @@ class ObjectCatalog:
         records = cursor.fetchall()
         #print records
         if not records:
-            exit(f"No columns listed for filetype {self.filetype} in ops_datafile_metadata, exiting")
+            sys.exit(f"No columns listed for filetype {self.filetype} in ops_datafile_metadata, exiting")
         for rec in records:
             #print rec
             hdr = None

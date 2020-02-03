@@ -132,7 +132,7 @@ def main():
         print("Traceback: ")
         traceback.print_tb(tb)
         print(" ")
-        exit(1)
+        sys.exit(1)
 
 
     print("\n###################### COADD OBJECT INGESTION ########################\n")

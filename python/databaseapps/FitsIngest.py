@@ -98,7 +98,7 @@ class FitsIngest(Ingest):
                         if isinstance(item, np.ndarray):
                             row[i] = np.where(np.isnan(item), None, item)
                         elif isinstance(item, list):
-                            raise
+                            raise Exception("Unexpected list format encountered")
                         elif not isinstance(item, (str, bytes)) and (np.isnan(item) or math.isnan(item)):
                             row[i] = None
                     #row = nrow.tolist()

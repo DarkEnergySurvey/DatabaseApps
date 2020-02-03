@@ -51,15 +51,15 @@ class CoaddCatalog(FitsIngest):
             if ingesttype == 'det':
                 self.band = 'det'
             elif self.band is None:
-                exit("Can't find band for file " + self.shortfilename + " in catalog table")
+                sys.exit("Can't find band for file " + self.shortfilename + " in catalog table")
 
             if self.tilename is None:
-                exit("Can't find tilename for file " + self.shortfilename + " in catalog table")
+                sys.exit("Can't find tilename for file " + self.shortfilename + " in catalog table")
 
             if self.pfw_attempt_id is None:
-                exit("Can't find pfw_attempt_id for file " + self.shortfilename + " in catalog table")
+                sys.exit("Can't find pfw_attempt_id for file " + self.shortfilename + " in catalog table")
         else:
-            exit("File " + self.shortfilename + " missing from catalog table")
+            sys.exit("File " + self.shortfilename + " missing from catalog table")
         self.constants = {"BAND": self.band,
                           "TILENAME": self.tilename,
                           "FILENAME": self.shortfilename,

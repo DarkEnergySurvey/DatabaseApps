@@ -64,7 +64,7 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
                 if cols[DI_DATATYPE] == 'date':
                     if dateformat and dateformat != cols[DI_FORMAT]:
                         sys.stderr.write(f"ERROR: Unsupported configuration for filetype={filetype}: Multiple different date formats found\n")
-                        exit(1)
+                        sys.exit(1)
                     dateformat = cols[DI_FORMAT]
                 ###
         columnlist.append('filename')

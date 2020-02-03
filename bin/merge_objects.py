@@ -43,7 +43,7 @@ if __name__ == '__main__':
         errors.append("either temptable or request is required")
     if errors:
         sys.stderr.write("ERROR: " + "; ".join(errors) + "\n")
-        exit(1)
+        sys.exit(1)
 
     targetschema, targettable = parseTableName(args['targettable'])
     temptable = args['temptable']
