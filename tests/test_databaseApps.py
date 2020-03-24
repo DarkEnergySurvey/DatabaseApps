@@ -5,18 +5,26 @@ import os
 import stat
 import sys
 import copy
+import mock
+import numpy as np
+from mock import patch, MagicMock
 from contextlib import contextmanager
 from io import StringIO
+import re
+from collections import OrderedDict
+from astropy.io import fits
 
 from MockDBI import MockConnection
 
 import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
+import databaseapps.datafile_ingest_utils as diu
 from despydb import desdbi
 
 import catalog_ingest as cati
 import datafile_ingest as dfi
 import mepoch_ingest as mei
+
 @contextmanager
 def capture_output():
     new_out, new_err = StringIO(), StringIO()
@@ -27,28 +35,30 @@ def capture_output():
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 
+def make_data(name='TESTER'):
+    col1 = fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000))
+    col2 = fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.)
+    hdu = fits.BinTableHDU.from_columns([col1, col2], name=name)
+
+    return hdu
+
+
+def write_fits(count=1):
+    filename = 'test.fits'
+    hdulist = fits.HDUList()
+    name = 'TESTER'
+    for i in range(count):
+        hdulist.append(make_data(name))
+    name = None
+    hdulist.writeto(filename)
+
+'''
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
-
-[db-maximal]
-PASSWD  =   maximal_passwd
-name    =   maximal_name_1    ; if repeated last name wins
-user    =   maximal_name      ; if repeated key, last one wins
-Sid     =   maximal_sid       ;comment glued onto value not allowed
-type    =   POSTgres
-server  =   maximal_server
-
-[db-minimal]
-USER    =   Minimal_user
-PASSWD  =   Minimal_passwd
-name    =   Minimal_name
-sid     =   Minimal_sid
-server  =   Minimal_server
-type    =   oracle
 
 [db-test]
 USER    =   Minimal_user
@@ -116,22 +126,6 @@ class TestDatafileIngest(unittest.TestCase):
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
-[db-maximal]
-PASSWD  =   maximal_passwd
-name    =   maximal_name_1    ; if repeated last name wins
-user    =   maximal_name      ; if repeated key, last one wins
-Sid     =   maximal_sid       ;comment glued onto value not allowed
-type    =   POSTgres
-server  =   maximal_server
-
-[db-minimal]
-USER    =   Minimal_user
-PASSWD  =   Minimal_passwd
-name    =   Minimal_name
-sid     =   Minimal_sid
-server  =   Minimal_server
-type    =   oracle
-
 [db-test]
 USER    =   Minimal_user
 PASSWD  =   Minimal_passwd
@@ -176,28 +170,12 @@ port    =   0
 
         sys.argv = temp
 
+
 class TestMepochIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
-
-[db-maximal]
-PASSWD  =   maximal_passwd
-name    =   maximal_name_1    ; if repeated last name wins
-user    =   maximal_name      ; if repeated key, last one wins
-Sid     =   maximal_sid       ;comment glued onto value not allowed
-type    =   POSTgres
-server  =   maximal_server
-
-[db-minimal]
-USER    =   Minimal_user
-PASSWD  =   Minimal_passwd
-name    =   Minimal_name
-sid     =   Minimal_sid
-server  =   Minimal_server
-type    =   oracle
 
 [db-test]
 USER    =   Minimal_user
@@ -289,25 +267,8 @@ port    =   0
 class TestIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
-
-[db-maximal]
-PASSWD  =   maximal_passwd
-name    =   maximal_name_1    ; if repeated last name wins
-user    =   maximal_name      ; if repeated key, last one wins
-Sid     =   maximal_sid       ;comment glued onto value not allowed
-type    =   POSTgres
-server  =   maximal_server
-
-[db-minimal]
-USER    =   Minimal_user
-PASSWD  =   Minimal_passwd
-name    =   Minimal_name
-sid     =   Minimal_sid
-server  =   Minimal_server
-type    =   oracle
 
 [db-test]
 USER    =   Minimal_user
@@ -372,6 +333,134 @@ port    =   0
         self.assertIsNone(ing.generateRows())
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
+'''
+
+class TestDatafile_Ingest_Utils(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sfile = 'services.ini'
+        cls.table = 'DATAFILE_INGEST_TEST'
+        open(cls.sfile, 'w').write("""
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
+
+        cls.metadata = OrderedDict({'TESTER': {'ra': {'datatype': 'float',
+                                                      'format': None,
+                                                      'columns': ['ra']},
+                                               'count': {'datatype': 'int',
+                                                         'format': None,
+                                                         'columns': ['count']},
+                                               'rownum': {'datatype': 'rnum',
+                                                          'format': None,
+                                                          'columns': ['rownum']}
+                                               }
+                                    })
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            os.unlink('test.fits')
+        except:
+            pass
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_ci_get(self):
+        indict = {'HeLlo': 5,
+                  'BYE': 6}
+        self.assertEqual(diu.ci_get(indict, 'hello'), 5)
+        self.assertEqual(diu.ci_get(indict, 'bye'), 6)
+        self.assertEqual(diu.ci_get(indict, 'HELLO'), 5)
+        self.assertIsNone(diu.ci_get(indict, 'hellobye'))
+
+    def test_print_node(self):
+        indict = {'hello': {'good': 1,
+                            'bye': 2},
+                  'now': 10}
+        output = ''
+        with capture_output() as (out, _):
+            diu.print_node(indict, 0, sys.stdout)
+            output = out.getvalue().strip()
+            for key, val in indict.items():
+                if isinstance(val, dict):
+                    self.assertTrue('<' + key + '>' in output)
+                    self.assertTrue('</' + key + '>' in output)
+                    for k, v in val.items():
+                        self.assertTrue(k + '=' + str(v) in output)
+                else:
+                    self.assertTrue(key + '=' + str(val) in output)
+            self.assertIsNone(re.search('\tnow', output))
+
+        with capture_output() as (out, _):
+            diu.print_node(indict, 1, sys.stdout)
+            output = out.getvalue().strip()
+            for key, val in indict.items():
+                if isinstance(val, dict):
+                    self.assertTrue('<' + key + '>' in output)
+                    self.assertTrue('</' + key + '>' in output)
+                    for k, v in val.items():
+                        self.assertTrue(k + '=' + str(v) in output)
+                else:
+                    self.assertTrue(key + '=' + str(val) in output)
+            self.assertIsNotNone(re.search(r'\tnow', output))
+
+    def test_ingest_datfile_contents_errors(self):
+        data = OrderedDict({'TEST_OBJECTS': {'image_name': {'datatype': 'char',
+                                                            'format': None,
+                                                            'columns': ['name']},
+                                             'date': {'datatype': 'date',
+                                                      'format': 'YYYY-MM-DD',
+                                                      'columns': ['date']},
+                                             'ra': {'datatype': 'double',
+                                                    'format': None,
+                                                    'columns': ['ra_j2000']},
+                                             'count': {'datatype': 'int',
+                                                       'format': None,
+                                                       'columns': ['count']},
+                                             'background': {'datatype': 'float',
+                                                            'format': None,
+                                                            'columns': ['background']},
+                                             'date2': {'datatype': 'date',
+                                                       'format': 'YYYY-MM-DD',
+                                                       'columns': ['end_date']},
+                                             'release_date': {'datatype': 'date',
+                                                              'format': 'YYYY-MM-DD HH:MI:SS',
+                                                              'columns': ['release']}
+                                             }
+                            })
+        with capture_output() as (_, err):
+            self.assertRaises(SystemExit, diu.ingest_datafile_contents, '', '', '', data, {}, None)
+            output = err.getvalue().strip()
+            self.assertTrue('ERROR' in output)
+
+    def test_ingest_datafile_contents(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        cur = dbh.cursor()
+        res = cur.execute(f"select count(*) from {self.table:s} where filename='test.fits'")
+        self.assertEqual(res.fetchall()[0][0], 0)
+        data = {'TESTER': make_data().data}
+        res = diu.ingest_datafile_contents('test.fits', 'test-ingest', self.table, self.metadata,
+                                           data, dbh)
+        self.assertEqual(res, 1000)
+        res = cur.execute(f"select count(*) from {self.table:s} where filename='test.fits'")
+        self.assertEqual(res.fetchall()[0][0], 1000)
+
+    def test_get_fits_data(self):
+        write_fits()
+        data = diu.get_fits_data('test.fits', 'TESTER')
+        self.assertEqual(1000, len(data['TESTER']))
+        data1 = diu.get_fits_data('test.fits', 1)
+        self.assertTrue(np.array_equal(data['TESTER'], data1[1]))
+
 
 class TestIngestUtils(unittest.TestCase):
     def test_getShortFilename(self):
@@ -384,6 +473,13 @@ class TestIngestUtils(unittest.TestCase):
         self.assertTrue(ingutil.IngestUtils.isInteger(5))
         self.assertTrue(ingutil.IngestUtils.isInteger(5.8))
         self.assertFalse(ingutil.IngestUtils.isInteger('fna'))
+
+    def test_resolveDbObject(self):
+        dbh = MagicMock()
+        dbh.cursor = MagicMock()
+        dbh.cursor.return_value.execute = MagicMock(return_value=(('test', 'testtable'),))
+        res = ingutil.IngestUtils.resolveDbObject('testtable', dbh)
+        self.assertEqual(res[0], 'test')
 
 if __name__ == '__main__':
     unittest.main()
