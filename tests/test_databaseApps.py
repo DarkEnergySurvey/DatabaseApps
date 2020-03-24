@@ -466,6 +466,30 @@ port    =   0
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test2.fits'")
         self.assertEqual(res.fetchall()[0][0], 1000)
 
+        res = diu.ingest_datafile_contents('test3.fits', 'test-ingest', self.table, {'TESTER':{}},
+                                           {'TESTER': {}}, dbh)
+        res = cur.execute(f"select count(*) from {self.table:s} where filename='test3.fits'")
+        self.assertEqual(res.fetchall()[0][0], 0)
+
+        res = diu.ingest_datafile_contents('test4.fits', 'test-ingest', self.table, self.metadata,
+                                           {'TESTER': {}}, dbh)
+        res = cur.execute(f"select count(*) from {self.table:s} where filename='test4.fits'")
+        self.assertEqual(res.fetchall()[0][0], 1)
+
+        #raw_data = make_data().data.tolist()
+        #data = {}
+        #for i, row in enumerate(raw_data):
+        #    data[i] = {'count': row[0],
+        #               'ra': row[1],
+        #               'comment': row[2]}
+
+        #res = diu.ingest_datafile_contents('test4.fits', 'test-ingest', self.table, self.metadata,
+        #                                   data, dbh)
+        #res = cur.execute(f"select count(*) from {self.table:s} where filename='test4.fits'")
+        #self.assertEqual(res.fetchall()[0][0], 1000)
+
+
+
 
 
     def test_get_fits_data(self):
