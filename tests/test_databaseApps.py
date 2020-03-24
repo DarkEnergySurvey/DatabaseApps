@@ -35,10 +35,13 @@ def capture_output():
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 
-def make_data(name='TESTER'):
-    col1 = fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000))
-    col2 = fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.)
-    hdu = fits.BinTableHDU.from_columns([col1, col2], name=name)
+def make_data(name='TESTER', lastcol=True):
+    cols = []
+    cols.append(fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000)))
+    cols.append(fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.))
+    if lastcol:
+        cols.append(fits.Column(name='comment', format='2A', array=np.array(['a'] * 1000)))
+    hdu = fits.BinTableHDU.from_columns(cols, name=name)
 
     return hdu
 
@@ -52,7 +55,7 @@ def write_fits(count=1):
     name = None
     hdulist.writeto(filename)
 
-'''
+
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -333,7 +336,7 @@ port    =   0
         self.assertIsNone(ing.generateRows())
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
-'''
+
 
 class TestDatafile_Ingest_Utils(unittest.TestCase):
     @classmethod
@@ -355,13 +358,16 @@ port    =   0
 
         cls.metadata = OrderedDict({'TESTER': {'ra': {'datatype': 'float',
                                                       'format': None,
-                                                      'columns': ['ra']},
+                                                      'columns': ['ra', 'ra2']},
                                                'count': {'datatype': 'int',
                                                          'format': None,
                                                          'columns': ['count']},
                                                'rownum': {'datatype': 'rnum',
                                                           'format': None,
-                                                          'columns': ['rownum']}
+                                                          'columns': ['rownum']},
+                                               'comment': {'datatype': 'str',
+                                                           'format': None,
+                                                           'columns': ['comment']}
                                                }
                                     })
 
@@ -454,6 +460,14 @@ port    =   0
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test.fits'")
         self.assertEqual(res.fetchall()[0][0], 1000)
 
+        data = make_data(lastcol=False).data
+        res = diu.ingest_datafile_contents('test2.fits', 'test-ingest', self.table, self.metadata,
+                                           {'TESTER': data}, dbh)
+        res = cur.execute(f"select count(*) from {self.table:s} where filename='test2.fits'")
+        self.assertEqual(res.fetchall()[0][0], 1000)
+
+
+
     def test_get_fits_data(self):
         write_fits()
         data = diu.get_fits_data('test.fits', 'TESTER')
@@ -479,6 +493,14 @@ class TestIngestUtils(unittest.TestCase):
         dbh.cursor = MagicMock()
         dbh.cursor.return_value.execute = MagicMock(return_value=(('test', 'testtable'),))
         res = ingutil.IngestUtils.resolveDbObject('testtable', dbh)
+        self.assertEqual(res[0], 'test')
+
+        dbh.cursor.return_value.execute = MagicMock(return_value=())
+        res = ingutil.IngestUtils.resolveDbObject('testtable2', dbh)
+        self.assertIsNone(res[0])
+
+        res = ingutil.IngestUtils.resolveDbObject('test.testtable', None)
+        self.assertEqual(len(res), 2)
         self.assertEqual(res[0], 'test')
 
 if __name__ == '__main__':
