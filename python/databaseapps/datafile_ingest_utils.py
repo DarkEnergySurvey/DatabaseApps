@@ -70,7 +70,7 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
         columnlist.append('filename')
 
     # handle timestamp format; does not support multiple formats in one input file
-    if dateformat:
+    if dateformat:     # pragma: no cover
         cur = dbh.cursor()
         cur.execute(f"ALTER SESSION SET NLS_TIMESTAMP_FORMAT = '{dateformat}'")
 
