@@ -49,10 +49,10 @@ def ingest_datafile_contents(sourcefile, filetype, tablename, metadata, datadict
     columnlist = []
     data = []
     indata = []
-    if hasattr(datadict, "keys"):
-        indata.append(datadict)
-    else:
-        indata = datadict
+    #if hasattr(datadict, "keys"):
+    #    indata.append(datadict)
+    #else:
+    #    indata = datadict
 
     dateformat = None
 
