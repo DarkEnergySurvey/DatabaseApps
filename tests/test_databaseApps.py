@@ -19,6 +19,7 @@ from MockDBI import MockConnection
 import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
 import databaseapps.datafile_ingest_utils as diu
+import databaseapps.objectcatalog as ojc
 from despydb import desdbi
 
 import catalog_ingest as cati
@@ -75,10 +76,6 @@ def make_fits(name='TESTER', lastcol=True):
     data = make_data(lastcol)
     for colname, val in data.items():
         cols.append(fits.Column(name=colname, format=val['format'], array=val['data']))
-    #cols.append(fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000)))
-    #cols.append(fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.))
-    #if lastcol:
-    #    cols.append(fits.Column(name='comment', format='2A', array=np.array(['a'] * 1000)))
     hdu = fits.BinTableHDU.from_columns(cols, name=name)
 
     return hdu
@@ -92,7 +89,7 @@ def write_fits(count=1):
     name = None
     hdulist.writeto(filename)
 
-
+'''
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -575,6 +572,105 @@ class TestIngestUtils(unittest.TestCase):
         res = ingutil.IngestUtils.resolveDbObject('test.testtable', None)
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0], 'test')
+'''
+
+class Testobjectcatalog(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sfile = 'services.ini'
+        cls.table = 'DATAFILE_INGEST_TEST'
+        write_fits()
+        open(cls.sfile, 'w').write("""
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
+
+        #cls.metadata = OrderedDict({'TESTER': {'ra': {'datatype': 'float',
+        #                                              'format': None,
+        #                                              'columns': ['ra', 'ra2']},
+        #                                       'count': {'datatype': 'int',
+        #                                                 'format': None,
+        #                                                 'columns': ['count']},
+        #                                       'rownum': {'datatype': 'rnum',
+        #                                                  'format': None,
+        #                                                  'columns': ['rownum']},
+        #                                       'comment': {'datatype': 'str',
+        #                                                   'format': None,
+        #                                                   'columns': ['comment']}
+        #                                       }
+        #                            })
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            os.unlink('test.fits')
+        except:
+            pass
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_init(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        self.assertTrue(cat.constDict)
+
+        with patch('databaseapps.objectcatalog.ingestutils.resolveDbObject', side_effect=[('PROD', 'SE_OBJECT'), ('test','test_temp')]):
+            with capture_output() as (out, _):
+                cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', 'test_temp', self.table, 0, True,
+                                        'services.ini', 'db-test')
+                self.assertFalse(cat.constDict)
+                output = out.getvalue().strip()
+                self.assertTrue('test_temp' in output)
+                self.assertTrue('PROD' in output)
+
+    def test_getObjectColumns(self):
+        self.assertRaises(SystemExit, ojc.ObjectCatalog, 12345, 'bad_test', 'test.fits', 'test_temp', self.table, 0, True,
+                                        'services.ini', 'db-test')
+
+        cat = ojc.ObjectCatalog(12345, 'fits_test2', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        self.assertTrue(cat.dbDict)
+
+    def test_checkForArrays(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        cat.objhdu = 'blah'
+        initial = copy.deepcopy(cat.dbDict)
+
+        cat.checkForArrays(cat.dbDict)
+        self.assertDictEqual(initial, cat.dbDict)
+
+        test_dict = OrderedDict({'blah': {'a_3': [['temp'], 'h', 'float_external', ['0']],
+                              'RA': [['ra'], 'h', 'float_external', ['0']],
+                              'RA_1': [['ra'], 'h', 'float external', ['0']]},
+                     })
+        initial = copy.deepcopy(test_dict)
+        cat.checkForArrays(test_dict)
+        self.assertNotEqual(test_dict, initial)
+
+    def test_info(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        with capture_output() as (out, _):
+            cat.info('MY TEST MESSAGE')
+            output = out.getvalue().strip()
+            self.assertTrue(output.endswith('TEST MESSAGE'))
+
+    def test_getConstValuesFromHeader(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        length = len(cat.constlist)
+        cat.getConstValuesFromHeader('TESTER')
+        self.assertNotEqual(len(cat.constlist), length)
+
 
 if __name__ == '__main__':
     unittest.main()
