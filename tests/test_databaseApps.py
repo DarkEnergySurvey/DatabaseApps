@@ -35,27 +35,64 @@ def capture_output():
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 
-def make_data(name='TESTER', lastcol=True):
-    cols = []
-    cols.append(fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000)))
-    cols.append(fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.))
+def make_data(lastcol=True):
+    data = OrderedDict()
+    data['count'] = {'format': 'J',
+                     'data': np.random.randint(1500, size=1000)}
+    data['ra'] = {'format': 'E',
+                  'data': np.random.random_sample((1000,)) * 100.}
     if lastcol:
-        cols.append(fits.Column(name='comment', format='2A', array=np.array(['a'] * 1000)))
+        data['comment'] = {'format': '2A',
+                           'data': np.array(['a'] * 1000)}
+    return data
+
+def make_xml(name='TESTER'):
+    data = make_data()
+    xmldata = f"<main><TABLE name=\"{name:s}\">\n"
+    cols = []
+    for col, val in data.items():
+        cols.append(col)
+        if 'J' in val['format']:
+            dtype = "int"
+        elif 'E' in val['format']:
+            dtype = "float"
+        else:
+            dtype = "str"
+        xmldata += f'<field name="{col}" datatype="{dtype:s}"/>\n'
+
+    count = len(data[cols[0]]['data'])
+    for i in range(count):
+        xmldata += "<tr>"
+        for col in cols:
+            xmldata += f"<td>{str(data[col]['data'][i])}</td>"
+        xmldata += "</tr>\n"
+
+    xmldata += "</TABLE>\n</main>\n"
+    return xmldata
+
+def make_fits(name='TESTER', lastcol=True):
+    cols = []
+    data = make_data(lastcol)
+    for colname, val in data.items():
+        cols.append(fits.Column(name=colname, format=val['format'], array=val['data']))
+    #cols.append(fits.Column(name='count', format='J', array=np.random.randint(1500, size=1000)))
+    #cols.append(fits.Column(name='ra', format='E', array=np.random.random_sample((1000,)) * 100.))
+    #if lastcol:
+    #    cols.append(fits.Column(name='comment', format='2A', array=np.array(['a'] * 1000)))
     hdu = fits.BinTableHDU.from_columns(cols, name=name)
 
     return hdu
-
 
 def write_fits(count=1):
     filename = 'test.fits'
     hdulist = fits.HDUList()
     name = 'TESTER'
     for i in range(count):
-        hdulist.append(make_data(name))
+        hdulist.append(make_fits(name))
     name = None
     hdulist.writeto(filename)
 
-
+'''
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -337,7 +374,7 @@ port    =   0
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
 
-
+'''
 class TestDatafile_Ingest_Utils(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -453,14 +490,16 @@ port    =   0
         cur = dbh.cursor()
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test.fits'")
         self.assertEqual(res.fetchall()[0][0], 0)
-        data = {'TESTER': make_data().data}
+        self.assertFalse(diu.is_ingested('test.fits', self.table, dbh))
+        data = {'TESTER': make_fits().data}
         res = diu.ingest_datafile_contents('test.fits', 'test-ingest', self.table, self.metadata,
                                            data, dbh)
         self.assertEqual(res, 1000)
+        self.assertTrue(diu.is_ingested('test.fits', self.table, dbh))
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test.fits'")
         self.assertEqual(res.fetchall()[0][0], 1000)
 
-        data = make_data(lastcol=False).data
+        data = make_fits(lastcol=False).data
         res = diu.ingest_datafile_contents('test2.fits', 'test-ingest', self.table, self.metadata,
                                            {'TESTER': data}, dbh)
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test2.fits'")
@@ -476,21 +515,16 @@ port    =   0
         res = cur.execute(f"select count(*) from {self.table:s} where filename='test4.fits'")
         self.assertEqual(res.fetchall()[0][0], 1)
 
-        #raw_data = make_data().data.tolist()
-        #data = {}
-        #for i, row in enumerate(raw_data):
-        #    data[i] = {'count': row[0],
-        #               'ra': row[1],
-        #               'comment': row[2]}
-
-        #res = diu.ingest_datafile_contents('test4.fits', 'test-ingest', self.table, self.metadata,
-        #                                   data, dbh)
-        #res = cur.execute(f"select count(*) from {self.table:s} where filename='test4.fits'")
-        #self.assertEqual(res.fetchall()[0][0], 1000)
-
-
-
-
+    def test_array_ingest(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        data = {'TESTER': [{'count':[0,2,3,4,5],
+                            'ra': np.array([1.22345]),
+                            'comment': 'None'},
+                           {'count':[554],
+                            'ra': np.array([]),
+                            'comment': 'hello'}]}
+        res = diu.ingest_datafile_contents('test5.fits', 'fits', self.table, self.metadata, data, dbh)
+        self.assertTrue(diu.is_ingested('test5.fits', self.table, dbh))
 
     def test_get_fits_data(self):
         write_fits()
@@ -498,6 +532,21 @@ port    =   0
         self.assertEqual(1000, len(data['TESTER']))
         data1 = diu.get_fits_data('test.fits', 1)
         self.assertTrue(np.array_equal(data['TESTER'], data1[1]))
+
+    def test_ingest_main(self):
+        #print(make_xml())
+        try:
+            dbh = desdbi.DesDbi(self.sfile, 'db-test')
+            open('test.xml', 'w').write(make_xml())
+            numrows = diu.datafile_ingest_main(dbh, 'xml', 'test.xml', self.table, self.metadata)
+            self.assertEqual(numrows, 1000)
+
+            self.assertRaises(ValueError, diu.datafile_ingest_main, dbh, '', '', '', {'a':0, 'b':1})
+        finally:
+            try:
+                os.unlink('test.xml')
+            except:
+                pass
 
 
 class TestIngestUtils(unittest.TestCase):
