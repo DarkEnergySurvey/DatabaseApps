@@ -92,7 +92,7 @@ def write_fits(count=1):
     name = None
     hdulist.writeto(filename)
 
-'''
+
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -374,7 +374,7 @@ port    =   0
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
 
-'''
+
 class TestDatafile_Ingest_Utils(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
