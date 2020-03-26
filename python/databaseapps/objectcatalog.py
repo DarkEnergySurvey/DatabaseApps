@@ -11,6 +11,7 @@ __version__ = "$Rev: 11430 $"
 import time
 import re
 import copy
+import sys
 import collections
 import fitsio
 from despydb import desdbi
@@ -125,13 +126,13 @@ class ObjectCatalog:
         self.dbDict = self.getObjectColumns()
         self.debug("CatalogIngest.init() done")
 
-    def __del__(self):
+    def __del__(self):       # pragma: no cover
         if self.dbh:
             self.dbh.close()
         if self.fits:
             self.fits.close()
 
-    def debug(self, msg):
+    def debug(self, msg):         # pragma: no cover
         """ Print debugging messages
 
             Parameters
@@ -233,7 +234,7 @@ class ObjectCatalog:
 
         for attribute, dblist in self.dbDict[hduName].items():
             for col in dblist[self.COLUMN_NAME]:
-                if dblist[self.DERIVED] == 'c':
+                if dblist[self.DERIVED] == 'c':      # pragma: no cover
                     value = self.funcDict[col](hdr[attribute])
                 elif dblist[self.DERIVED] == 'h':
                     value = str(hdr[attribute]).strip()
