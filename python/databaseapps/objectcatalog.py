@@ -93,7 +93,7 @@ class ObjectCatalog:
         self.fullfilename = datafile
         self.shortfilename = ingestutils.getShortFilename(datafile)
 
-        if fitsheader:
+        if fitsheader is not None:
             if ingestutils.isInteger(fitsheader):
                 self.objhdu = int(fitsheader)
             else:
@@ -409,7 +409,7 @@ class ObjectCatalog:
         self.info(f"Temp table {self.tempschema}.{self.temptable} is ready")
 
 
-    def isLoaded(self):
+    def isLoaded(self):        # pragma: no cover
         """ See what is loaded
         """
         self.debug("starting isLoaded()")
