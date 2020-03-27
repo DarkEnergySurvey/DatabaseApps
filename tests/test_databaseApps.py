@@ -89,7 +89,7 @@ def write_fits(count=1):
     name = None
     hdulist.writeto(filename)
 
-'''
+
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -572,7 +572,7 @@ class TestIngestUtils(unittest.TestCase):
         res = ingutil.IngestUtils.resolveDbObject('test.testtable', None)
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0], 'test')
-'''
+
 
 class Testobjectcatalog(unittest.TestCase):
     @classmethod
