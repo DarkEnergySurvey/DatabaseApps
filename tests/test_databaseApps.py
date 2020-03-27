@@ -671,6 +671,52 @@ port    =   0
         cat.getConstValuesFromHeader('TESTER')
         self.assertNotEqual(len(cat.constlist), length)
 
+    def test_loadingTarget(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        self.assertFalse(cat.loadingTarget())
+        cat.temptable = 'SE_OBJECT'
+        self.assertTrue(cat.loadingTarget())
+        cat.tempschema = 'test'
+        self.assertFalse(cat.loadingTarget())
+
+    def test_parseFitsTypeLength(self):
+        formats = {'count': 'J',
+                   'ra': 'E',
+                   'comment': '2A',
+                   'naxis': '3J'}
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        sizes, types = cat.parseFitsTypeLength(formats)
+        self.assertEqual(sizes['naxis'], 3)
+        self.assertEqual(sizes['ra'], 1)
+        self.assertEqual(types['naxis'], 'J')
+        self.assertEqual(types['ra'], 'E')
+
+    def test_insert_many(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+
+        cat.insert_many('', [], {})
+
+        rows = [('fname', 12.34, 2, 0)]
+        columns = ['filename', 'ra', 'count', 'rownum']
+
+        cat.insert_many('DATAFILE_INGEST_TEST', columns, rows)
+
+    def test_numAlreadyIngested(self):
+        cat = ojc.ObjectCatalog(12345, 'fits_test', 'test.fits', None, self.table, 'TESTER', False,
+                                'services.ini', 'db-test')
+        cat.targetschema = "'" + cat.targetschema
+        cat.targettable += "'"
+        self.assertEqual(cat.numAlreadyIngested()[0], 4)
+
+        cat.shortfilename = 'test2.fits'
+        self.assertEqual(cat.numAlreadyIngested()[0], 0)
+
+        cat.targetschema += 'x'
+        self.assertRaises(Exception, cat.numAlreadyIngested)
+
 
 if __name__ == '__main__':
     unittest.main()
