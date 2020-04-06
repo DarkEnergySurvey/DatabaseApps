@@ -2,6 +2,7 @@
 """
 from databaseapps.FitsIngest import FitsIngest
 from despydb import desdbi
+import sys
 
 class CoaddCatalog(FitsIngest):
     """ Class for ingesting coadd catalogs
@@ -56,7 +57,7 @@ class CoaddCatalog(FitsIngest):
             if self.tilename is None:
                 sys.exit("Can't find tilename for file " + self.shortfilename + " in catalog table")
 
-            if self.pfw_attempt_id is None:
+            if self.pfw_attempt_id is None:     # pragma: no cover
                 sys.exit("Can't find pfw_attempt_id for file " + self.shortfilename + " in catalog table")
         else:
             sys.exit("File " + self.shortfilename + " missing from catalog table")
