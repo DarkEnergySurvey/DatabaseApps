@@ -20,6 +20,7 @@ import databaseapps.Ingest as Ingest
 import databaseapps.ingestutils as ingutil
 import databaseapps.datafile_ingest_utils as diu
 import databaseapps.objectcatalog as ojc
+import databaseapps.CoaddCatalog as ccol
 from despydb import desdbi
 
 import catalog_ingest as cati
@@ -89,11 +90,10 @@ def write_fits(count=1):
     name = None
     hdulist.writeto(filename)
 
-
+'''
 class TestCatalogIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -572,7 +572,7 @@ class TestIngestUtils(unittest.TestCase):
         res = ingutil.IngestUtils.resolveDbObject('test.testtable', None)
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0], 'test')
-
+'''
 
 class Testobjectcatalog(unittest.TestCase):
     @classmethod
@@ -592,21 +592,6 @@ type    =   test
 port    =   0
 """)
         os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
-
-        #cls.metadata = OrderedDict({'TESTER': {'ra': {'datatype': 'float',
-        #                                              'format': None,
-        #                                              'columns': ['ra', 'ra2']},
-        #                                       'count': {'datatype': 'int',
-        #                                                 'format': None,
-        #                                                 'columns': ['count']},
-        #                                       'rownum': {'datatype': 'rnum',
-        #                                                  'format': None,
-        #                                                  'columns': ['rownum']},
-        #                                       'comment': {'datatype': 'str',
-        #                                                   'format': None,
-        #                                                   'columns': ['comment']}
-        #                                       }
-        #                            })
 
     @classmethod
     def tearDownClass(cls):
@@ -716,6 +701,61 @@ port    =   0
 
         cat.targetschema += 'x'
         self.assertRaises(Exception, cat.numAlreadyIngested)
+
+
+class TestCoaddCatalog(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sfile = 'services.ini'
+        cls.table = 'DATAFILE_INGEST_TEST'
+        write_fits()
+        open(cls.sfile, 'w').write("""
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            os.unlink('test.fits')
+        except:
+            pass
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+
+    def test_setCatalogInfo_corner(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+
+        cur = dbh.cursor()
+        cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', NULL, NULL, 123)")
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+        cur.execute("update catalog set band='r' where pfw_attempt_id=123")
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+
+    def test_retrieveCoaddObjectIds(self):
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        cur = dbh.cursor()
+        cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', NULL, NULL, 123)")
+        cur.execute("update catalog set tilename='abc' where pfw_attempt_id=123")
+        ci = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+        self.assertFalse(ci.idDict)
+        cur.execute("insert into COADD_OBJECT_TEST (id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 56789, 12345)")
+        ci.retrieveCoaddObjectIds(pfwid=12345, table='COADD_OBJECT_TEST')
+        self.assertTrue(ci.idDict)
 
 
 if __name__ == '__main__':
