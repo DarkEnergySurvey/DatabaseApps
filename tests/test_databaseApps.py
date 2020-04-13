@@ -116,6 +116,8 @@ port    =   0
     def test_ingest(self):
         os.environ['DES_SERVICES'] = self.sfile
         os.environ['DES_DB_SECTION'] = 'db-test'
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+
         temp = copy.deepcopy(sys.argv)
         sys.argv = ['catalog_ingest.py',
                     '-request',
@@ -133,6 +135,7 @@ port    =   0
         count = 0
         table = None
         output = output.split('\n')
+        print(f"\n\n{output}\n\n")
         for line in output:
             if 'LOAD' in line and 'finished' in line:
                 line = line[line.find('LOAD'):]
@@ -142,7 +145,7 @@ port    =   0
                 line = line[line.find('MAIN.'):]
                 temp = line.split()[0]
                 table = temp.split('.')[1]
-        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        #dbh = desdbi.DesDbi(self.sfile, 'db-test')
         curs = dbh.cursor()
         curs.execute('select count(*) from ' + table)
         res = curs.fetchall()[0][0]
@@ -182,6 +185,7 @@ port    =   0
     def test_ingest(self):
         os.environ['DES_SERVICES'] = self.sfile
         os.environ['DES_DB_SECTION'] = 'db-test'
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
         temp = copy.deepcopy(sys.argv)
         sys.argv = ['datafile_ingest.py',
                     '--filename',
@@ -199,7 +203,6 @@ port    =   0
             if 'ingest of' in line:
                 temp = line.split(',')[1]
                 count = int(temp.split()[0])
-        dbh = desdbi.DesDbi(self.sfile, 'db-test')
         curs = dbh.cursor()
         curs.execute('select count(*) from ' + table)
         res = curs.fetchall()[0][0]
@@ -734,14 +737,14 @@ port    =   0
 
     def test_setCatalogInfo_corner(self):
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
-
-        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+        dbh.autocommit = True
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
 
         cur = dbh.cursor()
-        cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', NULL, NULL, 123)")
-        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
-        cur.execute("update catalog set band='r' where pfw_attempt_id=123")
-        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+        cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcatx.fits', 'cat_firstcut', NULL, NULL, 123)")
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+        cur.execute("update catalog set band='r',tilename='abc' where pfw_attempt_id=123")
+        _ = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
 
     def test_retrieveCoaddObjectIds(self):
         os.environ['DES_SERVICES'] = self.sfile
@@ -750,10 +753,10 @@ port    =   0
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
         cur = dbh.cursor()
         cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', NULL, NULL, 123)")
-        cur.execute("update catalog set tilename='abc' where pfw_attempt_id=123")
+        cur.execute("update catalog set tilename='abc',band='r' where pfw_attempt_id=123")
         ci = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
         self.assertFalse(ci.idDict)
-        cur.execute("insert into COADD_OBJECT_TEST (id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 56789, 12345)")
+        cur.execute("insert into COADD_OBJECT_TEST (coadd_object_id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 12345)")
         ci.retrieveCoaddObjectIds(pfwid=12345, table='COADD_OBJECT_TEST')
         self.assertTrue(ci.idDict)
 
