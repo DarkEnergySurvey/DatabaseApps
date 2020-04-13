@@ -36,7 +36,7 @@ class Ingest:
     def __init__(self, filetype, datafile, hdu=None, order=None, dbh=None):
         self.objhdu = hdu
         if dbh is None:
-            dbh = desdbi.DesDbi()
+            self.dbh = desdbi.DesDbi()
         else:
             self.dbh = dbh
         self.cursor = self.dbh.cursor()
