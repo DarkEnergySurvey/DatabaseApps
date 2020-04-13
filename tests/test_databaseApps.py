@@ -6,6 +6,7 @@ import stat
 import sys
 import copy
 import mock
+import time
 import numpy as np
 from mock import patch, MagicMock
 from contextlib import contextmanager
@@ -330,6 +331,12 @@ port    =   0
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
         ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
         self.assertEqual(ing.getstatus(), 0)
+        dbh.close()
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk')
+        self.assertEqual(ing.getstatus(), 0)
 
     def test_debug_and_info(self):
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
@@ -373,6 +380,17 @@ port    =   0
         self.assertIsNone(ing.generateRows())
         self.assertEqual(ing.numAlreadyIngested(), 0)
         self.assertFalse(ing.isLoaded())
+
+    def test_numAlreadyIngested(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        self.assertEqual(ing.numAlreadyIngested(), 0)
+
+        with mock.patch.object(ing.dbh, 'cursor', side_effect=Exception('')):
+            start = time.time()
+            self.assertRaises(Exception, ing.numAlreadyIngested)
+            stop = time.time()
+            self.assertTrue(stop - start >= 39.)
 
 
 class TestDatafile_Ingest_Utils(unittest.TestCase):
@@ -743,7 +761,9 @@ port    =   0
         cur = dbh.cursor()
         cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcatx.fits', 'cat_firstcut', NULL, NULL, 123)")
         self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
-        cur.execute("update catalog set band='r',tilename='abc' where pfw_attempt_id=123")
+        cur.execute("update catalog set band='r' where pfw_attempt_id=123")
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+        cur.execute("update catalog set tilename='abc' where pfw_attempt_id=123")
         _ = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
 
     def test_retrieveCoaddObjectIds(self):
