@@ -18,6 +18,7 @@ from astropy.io import fits
 from MockDBI import MockConnection
 
 import databaseapps.Ingest as Ingest
+import databaseapps.FitsIngest as fin
 import databaseapps.ingestutils as ingutil
 import databaseapps.datafile_ingest_utils as diu
 import databaseapps.objectcatalog as ojc
@@ -372,6 +373,18 @@ port    =   0
         cols = ing.getObjectColumns()
         self.assertTrue('WCL' in cols.keys())
         self.assertTrue('FILENAME' in cols['WCL'].keys())
+        try:
+            dbh.con.fakeResults(((None,'NITE', 0, 'NITE', 'int'),
+                                 (0, 'EXPNUM', 0, 'EXPNUM', 'int'),
+                                 ('PRIMARY', 'BAND', 0, 'BAND', 'char'),
+                                 ('LDAC_OBJECTS', 'Y_IMAGE',0, 'Y_IMAGE', 'float')))
+            cols = ing.getObjectColumns()
+            self.assertTrue(None in cols.keys())
+            self.assertTrue(0 in cols.keys())
+            self.assertTrue('Y_IMAGE' in cols['LDAC_OBJECTS'].keys())
+
+        finally:
+            dbh.con.clearResults()
 
     def test_blanks(self):
         dbh = desdbi.DesDbi(self.sfile, 'db-test')
@@ -391,6 +404,13 @@ port    =   0
             self.assertRaises(Exception, ing.numAlreadyIngested)
             stop = time.time()
             self.assertTrue(stop - start >= 39.)
+
+    def test_executeIngest(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        ing = Ingest.Ingest('cat_finalcut', 'test.junk', dbh=dbh)
+        with mock.patch.object(ing, 'generateRows', return_value=1):
+            self.assertEqual(1, ing.executeIngest())
+
 
 
 class TestDatafile_Ingest_Utils(unittest.TestCase):
@@ -779,6 +799,95 @@ port    =   0
         cur.execute("insert into COADD_OBJECT_TEST (coadd_object_id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 12345)")
         ci.retrieveCoaddObjectIds(pfwid=12345, table='COADD_OBJECT_TEST')
         self.assertTrue(ci.idDict)
+
+class TestFitsIngest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sfile = 'services.ini'
+        cls.table = 'DATAFILE_INGEST_TEST'
+        write_fits()
+        open(cls.sfile, 'w').write("""
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
+
+    @classmethod
+    def tearDownClass(cls):
+        try:
+            os.unlink('test.fits')
+        except:
+            pass
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+
+    def test_init(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        dbh.autocommit = True
+        cur = dbh.cursor()
+        try:
+            cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', 'r', 'abc', 123)")
+        except:
+            pass
+        obj = fin.FitsIngest('cat_firstcut', '/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', {}, dbh=dbh)
+        self.assertTrue(hasattr(obj, 'fits'))
+
+    def test_generate_rows_corner(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        dbh.autocommit = True
+        cur = dbh.cursor()
+        try:
+            cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', 'r', 'abc', 123)")
+        except:
+            pass
+        obj = fin.FitsIngest('cat_firstcut', '/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', {}, dbh=dbh)
+        retval = np.array([1,2,[3,4,5]])
+        with patch('databaseapps.FitsIngest.fitsio', return_value=retval):
+            self.assertRaises(Exception, obj.generateRows)
+
+        #obj.generateRows()
+
+    def test_setCatalogInfo_corner(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        dbh.autocommit = True
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+
+        cur = dbh.cursor()
+        try:
+            cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcatx.fits', 'cat_firstcut', NULL, NULL, 123)")
+        except:
+            pass
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+        cur.execute("update catalog set band='r' where pfw_attempt_id=123")
+        self.assertRaises(SystemExit, ccol.CoaddCatalog, ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+        cur.execute("update catalog set tilename='abc' where pfw_attempt_id=123")
+        _ = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcatx.fits', idDict={}, dbh=dbh)
+
+    def test_retrieveCoaddObjectIds(self):
+        os.environ['DES_SERVICES'] = self.sfile
+        os.environ['DES_DB_SECTION'] = 'db-test'
+
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        cur = dbh.cursor()
+        try:
+            cur.execute("insert into catalog (filename, filetype, band, tilename, pfw_attempt_id) values ('D00526157_r_c01_r3463p01_red-fullcat.fits', 'cat_firstcut', NULL, NULL, 123)")
+            cur.execute("update catalog set tilename='abc',band='r' where pfw_attempt_id=123")
+        except:
+            pass
+        ci = ccol.CoaddCatalog(ingesttype='band', filetype='cat_firstcut', datafile='/var/lib/jenkins/test_data/D00526157_r_c01_r3463p01_red-fullcat.fits', idDict={}, dbh=dbh)
+        self.assertFalse(ci.idDict)
+        cur.execute("insert into COADD_OBJECT_TEST (coadd_object_id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 12345)")
+        ci.retrieveCoaddObjectIds(pfwid=12345, table='COADD_OBJECT_TEST')
+        self.assertTrue(ci.idDict)
+
 
 
 if __name__ == '__main__':
