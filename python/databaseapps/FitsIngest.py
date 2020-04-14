@@ -32,7 +32,7 @@ class FitsIngest(Ingest):
         self.matchCount = matchCount
         self.coadd_ids = None
 
-    def __del__(self):
+    def __del__(self):  # pragma: no cover
         if hasattr(self, 'fits'):
             if self.fits:
                 self.fits.close()
@@ -121,7 +121,7 @@ class FitsIngest(Ingest):
                         elif self.orderedColumns[idx] == "NUMBER":
                             try:
                                 outrow.append(self.idDict[row[idx]])
-                            except KeyError:
+                            except KeyError:   # pragma: no cover
                                 miscutils.fwdebug_print(f"ERROR: Coadd number ({row[idx]:d}) specified that does not have a corresponding coadd id, found in row {linecount:d}.")
                                 return 1
 
@@ -141,7 +141,7 @@ class FitsIngest(Ingest):
                             else:
                                 outrow.append(row[idx])
                     self.sqldata.append(outrow)
-        except:
+        except:  # pragma: no cover
             miscutils.fwdebug_print(f"Possible error in line {linecount:d} of {self.shortfilename}")
             se = sys.exc_info()
             e = se[1]
@@ -156,7 +156,7 @@ class FitsIngest(Ingest):
             if self.generateID:
                 self.dbDict[self.objhdu]['ID'] = Entry(column_name='ID', position=0)
                 self.orderedColumns = ['ID'] + self.orderedColumns
-            elif self.matchCount and len(self.idDict) != len(self.sqldata):
+            elif self.matchCount and len(self.idDict) != len(self.sqldata):  # pragma: no cover
                 self.status = 1
                 retval = 1
                 miscutils.fwdebug_print(f"Incorrect number of rows in {self.shortfilename}. Count is {len(self.sqldata):d}, should be {len(self.idDict):d}")
