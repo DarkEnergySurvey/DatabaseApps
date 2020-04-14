@@ -103,13 +103,12 @@ class Ingest:
             hdr = None
             if rec[0] is None:
                 hdr = self.objhdu
+            elif ingestutils.isInteger(rec[0]):
+                hdr = int(rec[0])
             elif rec[0].upper() == 'PRIMARY':
                 hdr = 0
             else:
-                if ingestutils.isInteger(rec[0]):
-                    hdr = int(rec[0])
-                else:
-                    hdr = rec[0]
+                hdr = rec[0]
             if hdr not in results:
                 results[hdr] = collections.OrderedDict()
             if rec[1] not in results[hdr]:
@@ -170,7 +169,7 @@ class Ingest:
                 self.info("INFO: file " + self.fullfilename +
                           " already ingested with the same number of" +
                           " objects. Skipping.")
-            else:
+            else:   # pragma: no cover
                 miscutils.fwdebug_print("ERROR: file " + self.fullfilename +
                                         " already ingested, but the number of objects is" +
                                         " DIFFERENT: catalog=" + str(numCatObjects) +
@@ -213,7 +212,7 @@ class Ingest:
             self.dbh.commit()
             self.info(f"Inserted {len(self.sqldata):d} rows into table {self.targettable}")
             self.status = 0
-        except:
+        except:   # pragma: no cover
             se = sys.exc_info()
             e = str(se[1])
             tb = se[2]
