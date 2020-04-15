@@ -64,7 +64,7 @@ class Mangle(Ingest):
             f.close()
             if skip > 0:
                 print(f"Skipped {skip:d} items which were not found in the alternate table.")
-        except:
+        except:  # pragma: no cover
             se = sys.exc_info()
             e = se[0]
             tb = se[2]
@@ -96,7 +96,7 @@ class Mangle(Ingest):
                 miscutils.fwdebug_print(f"Incorrect number of rows in {self.shortfilename}. Count is {len(self.sqldata):d}, should be {len(self.idDict):d}")
                 return 1
             return 0
-        except:
+        except:  # pragma: no cover
             se = sys.exc_info()
             e = se[1]
             tb = se[2]
