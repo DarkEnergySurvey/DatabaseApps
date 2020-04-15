@@ -124,7 +124,7 @@ def main():
                 raise Exception("Could not determine the pfw_attempt_id from the coadd_file")
             det_pfwid = results[0][0]
 
-    except:
+    except:  # pragma: no cover
         se = sys.exc_info()
         e = se[1]
         tb = se[2]
@@ -151,7 +151,7 @@ def main():
                 stat = detobj.executeIngest()
                 retval += detobj.getstatus()
                 printinfo("Ingest of detection catalog " + detcat + status[stat] + "\n")
-    except:
+    except:  # pragma: no cover
         se = sys.exc_info()
         e = se[1]
         tb = se[2]
@@ -178,7 +178,7 @@ def main():
                     stat = bandobj.executeIngest()
                     retval += bandobj.getstatus()
                     printinfo("Ingest of band catalog " + bfile + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -200,7 +200,7 @@ def main():
                 stat = healobj.executeIngest()
                 retval += healobj.getstatus()
                 printinfo("Ingest of healpix catalog " + healpix + status[stat] + "\n")
-        except:
+        except:  # pragma: no cover
             se = sys.exc_info()
             e = se[1]
             tb = se[2]
@@ -226,7 +226,7 @@ def main():
                     stat = wavgobj.executeIngest()
                     retval += wavgobj.getstatus()
                     printinfo("Ingest of wavg catalog " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -249,7 +249,7 @@ def main():
                     stat = wavgobj.executeIngest()
                     retval += wavgobj.getstatus()
                     printinfo("Ingest of wavg_oclink catalog " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -274,7 +274,7 @@ def main():
                     stat = ccdobj.executeIngest()
                     retval += ccdobj.getstatus()
                     printinfo("Ingest of ccdgon file " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -297,7 +297,7 @@ def main():
                     stat = molyobj.executeIngest()
                     retval += molyobj.getstatus()
                     printinfo("Ingest of molygon file " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -320,7 +320,7 @@ def main():
                     stat = mcobj.executeIngest()
                     retval += mcobj.getstatus()
                     printinfo("Ingest of molygon_ccdgon file " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -343,7 +343,7 @@ def main():
                     stat = cmobj.executeIngest()
                     retval += cmobj.getstatus()
                     printinfo("Ingest of coadd_object_molygon file " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
@@ -366,7 +366,7 @@ def main():
                 stat = extobj.executeIngest()
                 retval += extobj.getstatus()
                 printinfo("Ingest of detection catalog " + extinct + status[stat] + "\n")
-        except:
+        except:  # pragma: no cover
             se = sys.exc_info()
             e = se[1]
             tb = se[2]
@@ -389,7 +389,7 @@ def main():
                     stat = extobj.executeIngest()
                     retval += extobj.getstatus()
                     printinfo("Ingest of detection catalog " + _file[0] + status[stat] + "\n")
-            except:
+            except:  # pragma: no cover
                 se = sys.exc_info()
                 e = se[1]
                 tb = se[2]
