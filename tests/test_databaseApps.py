@@ -23,6 +23,7 @@ import databaseapps.ingestutils as ingutil
 import databaseapps.datafile_ingest_utils as diu
 import databaseapps.objectcatalog as ojc
 import databaseapps.CoaddCatalog as ccol
+import databaseapps.Mangle as mgl
 from despydb import desdbi
 
 import catalog_ingest as cati
@@ -137,7 +138,7 @@ port    =   0
         count = 0
         table = None
         output = output.split('\n')
-        print(f"\n\n{output}\n\n")
+
         for line in output:
             if 'LOAD' in line and 'finished' in line:
                 line = line[line.find('LOAD'):]
@@ -164,7 +165,6 @@ port    =   0
 class TestDatafileIngest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('SETUP')
         cls.sfile = 'services.ini'
         open(cls.sfile, 'w').write("""
 
@@ -281,7 +281,7 @@ port    =   0
         with capture_output() as (out, err):
             self.assertEqual(mei.main(), 0)
             output = out.getvalue().strip()
-
+        print(output)
         outlines += output.split('\n')
         lookups = []
         table = None
@@ -887,6 +887,81 @@ port    =   0
         cur.execute("insert into COADD_OBJECT_TEST (coadd_object_id, filename, object_number, band, tilename, pfw_attempt_id) values(123, 'D00526157_r_c01_r3463p01_red-fullcat.fits', 1234, 'r', 'acbd', 12345)")
         ci.retrieveCoaddObjectIds(pfwid=12345, table='COADD_OBJECT_TEST')
         self.assertTrue(ci.idDict)
+
+class TestMangle(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sfile = 'services.ini'
+        cls.table = 'DATAFILE_INGEST_TEST'
+        cls.filename = '/var/lib/jenkins/test_data/mangle/csv/test_g_ccdgon.csv'
+        #write_fits()
+        open(cls.sfile, 'w').write("""
+
+[db-test]
+USER    =   Minimal_user
+PASSWD  =   Minimal_passwd
+name    =   Minimal_name
+sid     =   Minimal_sid
+server  =   Minimal_server
+type    =   test
+port    =   0
+""")
+        os.chmod(cls.sfile, (0xffff & ~(stat.S_IROTH | stat.S_IWOTH | stat.S_IRGRP | stat.S_IWGRP)))
+
+    @classmethod
+    def tearDownClass(cls):
+        os.unlink(cls.sfile)
+        MockConnection.destroy()
+
+    def test_init(self):
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        _ = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',{}, dbh=dbh)
+
+    def test_parseCSV(self):
+        ids = dict(zip(range(1, 68392), range(68392, 1, -1)))
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',ids, dbh=dbh)
+        m.parseCSV(self.filename, [int, str, str, str, float, int, str])
+        self.assertEqual(len(m.sqldata), 301)
+
+    def test_parseCSV_errors(self):
+        ids = dict(zip(range(1, 68392), range(68392, 1, -1)))
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',ids, dbh=dbh)
+        self.assertRaises(Exception, m.parseCSV, self.filename, [int, str])
+
+        del m
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon', {}, dbh=dbh)
+        m.coadd_id = 2
+        self.assertRaises(KeyError, m.parseCSV, self.filename, [int, str, str, str, float, int, str])
+
+        with capture_output() as (out, _):
+            m.skipmissing = True
+            m.parseCSV(self.filename, [int, str, str, str, float, int, str])
+            output = out.getvalue().strip()
+            self.assertTrue('301' in output)
+            self.assertTrue('Skipped' in output)
+
+    def test_generateRows(self):
+        ids = dict(zip(range(1, 68392), range(68392, 1, -1)))
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',ids, dbh=dbh)
+        self.assertEqual(0, m.generateRows())
+
+    def test_generateRows_errors(self):
+        ids = dict(zip(range(1, 68392), range(68392, 1, -1)))
+        dbh = desdbi.DesDbi(self.sfile, 'db-test')
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',ids, checkcount=True, dbh=dbh)
+        with capture_output() as (out, _):
+            self.assertEqual(1, m.generateRows())
+            output = out.getvalue().strip()
+            self.assertTrue('Incorrect' in output)
+            self.assertTrue('rows' in output)
+        del m
+        ids = dict(zip(range(1, 302), range(302, 1, -1)))
+        m = mgl.Mangle(self.filename, 'mangle_csv_ccdgon',ids, checkcount=True, dbh=dbh)
+        self.assertEqual(0, m.generateRows())
+
 
 
 
