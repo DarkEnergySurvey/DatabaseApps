@@ -200,12 +200,26 @@ class Ingest:
         sqlstr += ") values ("
         sqlstr += ', '.join(list(self.constants.values()) + places)
         sqlstr += ")"
+
+        tempcurs = self.dbh.cursor()
+        sql_cols = "select "
+        sql_cols += ','.join(columns)
+        sql_cols += f" from {self.targettable} where 1=0"
+
+        tempcurs.execute(sql_cols)
+
+        types = (d[1] for d in tempcurs.description)
+        tempcurs.close()
+
         cursor = self.dbh.cursor()
         cursor.prepare(sqlstr)
+        cursor.bindarraysize = 100000
+        cursor.setinputsizes(*types)
+
         offset = 0
         try:
             while offset < len(self.sqldata):
-                chunk = min(1000000, len(self.sqldata) - offset)
+                chunk = min(100000, len(self.sqldata) - offset)
                 cursor.executemany(None, self.sqldata[offset:offset + chunk])
                 offset += chunk
             cursor.close()

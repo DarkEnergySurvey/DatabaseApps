@@ -94,13 +94,17 @@ class FitsIngest(Ingest):
                     # have to explicitly cast to a list because tolist() on a numpy.void
                     # object returns a tuple!
                     row = list(row.tolist())
-                    for i, item in enumerate(row):
-                        if isinstance(item, np.ndarray):
-                            row[i] = np.where(np.isnan(item), None, item)
-                        elif isinstance(item, list):
-                            raise Exception("Unexpected list format encountered")
-                        elif not isinstance(item, (str, bytes)) and (np.isnan(item) or math.isnan(item)):
-                            row[i] = None
+                    #for i, item in enumerate(row):
+                    #    if isinstance(item, np.ndarray):
+                    #        pass
+                            #row[i] = np.where(np.isnan(item), None, item)
+                            #row[i] = np.where(np.isinf(item), None, item)
+                    #    elif isinstance(item, list):
+                    #        raise Exception("Unexpected list format encountered")
+                    #    elif not isinstance(item, (str, bytes)) and (np.isnan(item) or math.isnan(item)):
+                    #        row[i] = decimal.Decimal('NaN')
+                    #    elif not isinstance(item, (str, bytes)) and (np.isinf(item) or math.isinf(item)):
+                    #        row[i] = float('inf')
                     #row = nrow.tolist()
 
                     # array to hold values for this FITS row
